@@ -14,7 +14,7 @@
               "type": "markdown",
               "state": {
                 "file": "README.md",
-                "mode": "preview",
+                "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
@@ -185,6 +185,7 @@
   },
   "active": "2c7966e9bb8527c5",
   "lastOpenFiles": [
+    "68ddc8dd0f17bcb30af2130651076a96.png",
     "reports/rca_report_cpu_20260325_132909.md",
     "reports/rca_report_cpu_20260325_124311.md",
     "reports/react_sequence.md",
