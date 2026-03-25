@@ -1,0 +1,15 @@
+service,cpu,delay,disk,loss,mem
+PassthroughCluster,0.0,,,,0.0
+adservice,1.0,1.0,1.0,1.0,1.0
+cartservice,1.0,1.0,1.0,1.0,1.0
+checkoutservice,1.0,1.0,1.0,1.0,1.0
+currencyservice,1.0,1.0,1.0,1.0,1.0
+emailservice,1.0,1.0,1.0,1.0,1.0
+frontend,1.0,1.0,1.0,1.0,1.0
+frontend-external,1.0,1.0,1.0,1.0,1.0
+main,1.0,1.0,1.0,1.0,0.0
+paymentservice,1.0,1.0,1.0,1.0,1.0
+productcatalogservice,1.0,1.0,1.0,1.0,1.0
+recommendationservice,1.0,1.0,1.0,1.0,1.0
+redis,1.0,1.0,1.0,1.0,1.0
+shippingservice,1.0,1.0,1.0,1.0,1.0
