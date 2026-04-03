@@ -1,0 +1,12 @@
+.git
+.idea
+.vscode
+.obsidian
+__pycache__
+*.pyc
+logs
+reports
+.env
+*.md
+!README.md
+.DS_Store

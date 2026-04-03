@@ -183,8 +183,10 @@
       "bases:新建数据库": false
     }
   },
-  "active": "2c7966e9bb8527c5",
+  "active": "d7206498b2a1239e",
   "lastOpenFiles": [
+    "docker-compose.yml",
+    "Dockerfile",
     "QUICKSTART.md",
     "68ddc8dd0f17bcb30af2130651076a96.png",
     "README.md",
@@ -210,7 +212,6 @@
     "agents/log_agent.py~",
     "knowledge_base/rca_knowledge.md",
     "reports/workflow_diagram.md",
-    "reports/topology_diagram.md",
-    "data/productcatalogservice_mem/5/inject_time.txt"
+    "reports/topology_diagram.md"
   ]
 }
