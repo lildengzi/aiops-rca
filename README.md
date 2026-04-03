@@ -78,7 +78,7 @@ aiops-rca/
 │   ├── __init__.py
 │   ├── data_loader.py         # 数据加载
 │   └── anomaly_detection.py   # 异常检测算法
-├── data/                      # 测试数据
+├── data/                      # 测试数据（最小演示数据集）
 │   ├── data1.csv              # CPU 故障场景
 │   ├── data2.csv              # 延迟故障场景
 │   ├── data3.csv              # 磁盘故障场景
@@ -86,19 +86,34 @@ aiops-rca/
 │   └── data5.csv              # 内存故障场景
 ├── knowledge_base/            # 知识库
 │   └── rca_knowledge.md       # RCA 专家知识
+├── log/                       # 日志信息 （基于已有报告）
 └── reports/                   # 生成的报告（自动创建）
 ```
 
 ## 四、快速开始
 
 ### 1. 环境准备
-### 2. 离线演示（无需 API Key）
+
+安装依赖：
+```bash
+pip install -r requirements.txt
+```
+
+### 2. Web 界面启动（推荐）
+
+双击运行 `run.bat` 或执行：
+```bash
+streamlit run app.py
+```
+浏览器自动打开 http://localhost:8501
+
+### 3. 离线演示（无需 API Key）
 
 ```bash
 python demo_offline.py
 ```
 
-### 3. 完整多智能体运行（需要 LLM API Key）
+### 4. 完整多智能体运行（需要 LLM API Key）
 
 ```bash
 # 运行完整分析

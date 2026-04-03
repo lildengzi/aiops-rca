@@ -1,0 +1,17 @@
+- [2026-03-12 12:59:02] 运维专家 - 第1轮计划:
+```json
+{
+  "agent_type": "master",
+  "data": {
+    "plan": [
+      {
+        "step_id": 1,
+        "agent": "metric",
+        "query": "query_all_services_overview(time_range='5m', metrics=['cpu_usage_percent', 'memory_usage_bytes', 'pod_count'])",
+        "reason": "全局扫描所有服务近5分钟CPU和内存使用情况，确认frontend是否真实存在内存飙升，同时识别是否存在关联异常（如CPU突增、Pod数异常扩缩容），排除误报或指标延迟"
+      },
+      {
+        "step_id": 2,
+        "agent": "metric",
+        "query": "query_service_metrics(service='frontend', metrics=['memory_us
+- [12:59:12] 指标分析完成: ### CPU 故障场景监控指标分析总结

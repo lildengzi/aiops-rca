@@ -5,6 +5,8 @@
 import json
 import random
 import hashlib
+import os
+import glob
 from datetime import datetime
 from langchain_core.tools import tool
 from utils.data_loader import load_fault_data, get_all_services
@@ -185,24 +187,37 @@ def query_service_logs(
                 "metric": col,
                 "anomaly_score": result["anomaly_score"],
             })
-
-    # 生成日志
+    # 先尝试加载已有保存的日志（优先使用已保存文件）
+    saved_logs, saved_path = _load_latest_saved_logs(service_name, fault_type)
     base_ts = int(df["time"].iloc[len(df) // 2])
-    if anomalies:
-        primary_anomaly = max(anomalies, key=lambda x: x["anomaly_score"])
-        logs = _generate_logs_for_service(
-            service_name, fault_type, primary_anomaly, base_ts, max_logs
-        )
-        summary = (
-            f"服务 {service_name} 发现 {len(anomalies)} 个异常指标，"
-            f"主要异常: {primary_anomaly['metric']}（异常分数: {primary_anomaly['anomaly_score']:.2f}）。"
-            f"日志中发现相关错误模式，建议结合指标数据进一步确认根因。"
-        )
+    if saved_logs:
+        logs = saved_logs
+        summary = f"已加载先前保存的日志文件: {os.path.basename(saved_path)}，共 {len(logs)} 条。"
     else:
-        logs = _generate_logs_for_service(
-            service_name, fault_type, {"metric": "", "anomaly_score": 0.1}, base_ts, 2
-        )
-        summary = f"服务 {service_name} 指标未见明显异常，日志中少量 WARN 信息，暂无关键性错误。"
+        # 生成日志
+        if anomalies:
+            primary_anomaly = max(anomalies, key=lambda x: x["anomaly_score"])
+            logs = _generate_logs_for_service(
+                service_name, fault_type, primary_anomaly, base_ts, max_logs
+            )
+            summary = (
+                f"服务 {service_name} 发现 {len(anomalies)} 个异常指标，"
+                f"主要异常: {primary_anomaly['metric']}（异常分数: {primary_anomaly['anomaly_score']:.2f}）。"
+                f"日志中发现相关错误模式，建议结合指标数据进一步确认根因。"
+            )
+        else:
+            logs = _generate_logs_for_service(
+                service_name, fault_type, {"metric": "", "anomaly_score": 0.1}, base_ts, 2
+            )
+            summary = f"服务 {service_name} 指标未见明显异常，日志中少量 WARN 信息，暂无关键性错误。"
+
+        # 保存生成的日志到专属目录
+        try:
+            saved = _save_logs_to_file(service_name, fault_type, logs)
+            if saved:
+                summary += f" 已将生成的日志保存至 {os.path.relpath(saved, PROJECT_ROOT)}。"
+        except Exception:
+            pass
 
     if log_level != "ALL":
         logs = [l for l in logs if l["level"] == log_level]
@@ -257,3 +272,47 @@ def search_error_patterns(fault_type: str, keyword: str = "") -> str:
 
 
 LOG_TOOLS = [query_service_logs, search_error_patterns]
+
+# Logs save directory (project_root/logs)
+PROJECT_ROOT = os.path.dirname(os.path.dirname(__file__))
+LOG_SAVE_DIR = os.path.join(PROJECT_ROOT, "logs")
+os.makedirs(LOG_SAVE_DIR, exist_ok=True)
+
+
+def _save_logs_to_file(service: str, fault_type: str, logs: list[dict]) -> str:
+    """将生成的日志保存为 JSON 文件，返回文件路径。"""
+    ts = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+    rand = hashlib.md5(str(random.random()).encode()).hexdigest()[:8]
+    filename = f"{service}_{fault_type}_{ts}_{rand}.json"
+    path = os.path.join(LOG_SAVE_DIR, filename)
+    payload = {
+        "saved_at": datetime.utcnow().isoformat() + "Z",
+        "service": service,
+        "fault_type": fault_type,
+        "log_count": len(logs),
+        "logs": logs,
+    }
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(payload, f, ensure_ascii=False, indent=2)
+    except Exception:
+        # 忽略写入错误（保持向后兼容）
+        return ""
+    return path
+
+
+def _load_latest_saved_logs(service: str, fault_type: str) -> tuple[list[dict], str] | tuple[None, None]:
+    """如果存在已保存的日志文件，返回最新文件的日志列表和文件路径；否则返回 (None, None)。"""
+    pattern = os.path.join(LOG_SAVE_DIR, f"{service}_{fault_type}_*.json")
+    files = glob.glob(pattern)
+    if not files:
+        return None, None
+    # 按文件名（包含时间戳）排序，取最新
+    files.sort()
+    latest = files[-1]
+    try:
+        with open(latest, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            return data.get("logs", []), latest
+    except Exception:
+        return None, None

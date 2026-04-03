@@ -1,0 +1,112 @@
+{
+  "saved_at": "2026-04-03T02:50:45.281766Z",
+  "service": "cartservice",
+  "fault_type": "cpu",
+  "log_count": 8,
+  "logs": [
+    {
+      "timestamp": "1685202844",
+      "level": "ERROR",
+      "message": "Process 4075 consuming excessive CPU resources",
+      "source": {
+        "__hostname__": "cartservice-pod-2",
+        "_pod_name_": "cartservice-deployment-cfcd2084"
+      },
+      "fields": {
+        "traceId": "38e565edc80537c0",
+        "service": "cartservice"
+      }
+    },
+    {
+      "timestamp": "1685202750",
+      "level": "ERROR",
+      "message": "Scheduler thread blocked for 14595ms, possible deadlock",
+      "source": {
+        "__hostname__": "cartservice-pod-1",
+        "_pod_name_": "cartservice-deployment-c4ca4238"
+      },
+      "fields": {
+        "traceId": "2611799febef79d8",
+        "service": "cartservice"
+      }
+    },
+    {
+      "timestamp": "1685202837",
+      "level": "ERROR",
+      "message": "Scheduler thread blocked for 4848ms, possible deadlock",
+      "source": {
+        "__hostname__": "cartservice-pod-2",
+        "_pod_name_": "cartservice-deployment-c81e728d"
+      },
+      "fields": {
+        "traceId": "a03b3e6f00ba41fd",
+        "service": "cartservice"
+      }
+    },
+    {
+      "timestamp": "1685202869",
+      "level": "ERROR",
+      "message": "Scheduler thread blocked for 5893ms, possible deadlock",
+      "source": {
+        "__hostname__": "cartservice-pod-3",
+        "_pod_name_": "cartservice-deployment-eccbc87e"
+      },
+      "fields": {
+        "traceId": "31eed6b90a553dd5",
+        "service": "cartservice"
+      }
+    },
+    {
+      "timestamp": "1685202702",
+      "level": "ERROR",
+      "message": "Scheduler thread blocked for 27773ms, possible deadlock",
+      "source": {
+        "__hostname__": "cartservice-pod-1",
+        "_pod_name_": "cartservice-deployment-a87ff679"
+      },
+      "fields": {
+        "traceId": "82235788bb0db745",
+        "service": "cartservice"
+      }
+    },
+    {
+      "timestamp": "1685202810",
+      "level": "ERROR",
+      "message": "High CPU detected: usage=93.3%, threshold=80%",
+      "source": {
+        "__hostname__": "cartservice-pod-2",
+        "_pod_name_": "cartservice-deployment-e4da3b7f"
+      },
+      "fields": {
+        "traceId": "eaf26bf3d193e20a",
+        "service": "cartservice"
+      }
+    },
+    {
+      "timestamp": "1685202792",
+      "level": "ERROR",
+      "message": "High CPU detected: usage=98.9%, threshold=80%",
+      "source": {
+        "__hostname__": "cartservice-pod-1",
+        "_pod_name_": "cartservice-deployment-1679091c"
+      },
+      "fields": {
+        "traceId": "02a508e631c4f94e",
+        "service": "cartservice"
+      }
+    },
+    {
+      "timestamp": "1685202820",
+      "level": "ERROR",
+      "message": "High CPU detected: usage=83.6%, threshold=80%",
+      "source": {
+        "__hostname__": "cartservice-pod-2",
+        "_pod_name_": "cartservice-deployment-8f14e45f"
+      },
+      "fields": {
+        "traceId": "c6bb9115e898d0bd",
+        "service": "cartservice"
+      }
+    }
+  ]
+}

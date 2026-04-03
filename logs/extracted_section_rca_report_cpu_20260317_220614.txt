@@ -1,0 +1,17 @@
+- [2026-03-17 22:03:10] 运维专家 - 第1轮计划:
+```json
+{
+  "agent_type": "master",
+  "data": {
+    "plan": [
+      {
+        "step_id": 1,
+        "agent": "metric",
+        "query": "query_all_services_overview(start_time='2026-03-17T21:48:10Z', end_time='2026-03-17T22:03:10Z', metric_type='cpu_usage_percent')",
+        "reason": "首轮排查需全局扫描所有服务CPU使用率，识别异常突增的服务（00M告警通常对应CPU过载），时间窗口覆盖最近15分钟以捕捉瞬时峰值"
+      },
+      {
+        "step_id": 2,
+        "agent": "metric",
+        "query": "query_infra_metrics(node='main', metric_type='cpu_load', start
+- [22:03:22] 指标分析完成: ### CPU 故障场景监控指标分析总结
