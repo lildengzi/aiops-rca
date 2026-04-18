@@ -1,6 +1,6 @@
 # 基于多智能体的电子元件故障检测系统根因分析
 
-> 毕业设计项目 —— 基于 LangChain + LangGraph 实现 ReAct 模式多智能体协作的 AIOps 根因分析系统
+> 设计项目 —— 基于 LangChain + LangGraph 实现 ReAct 模式多智能体协作的 AIOps 根因分析系统
 
 ## 一、项目概述
 
