@@ -79,11 +79,11 @@ aiops-rca/
 │   ├── data_loader.py         # 数据加载
 │   └── anomaly_detection.py   # 异常检测算法
 ├── data/                      # 测试数据（最小演示数据集）
-│   ├── data1.csv              # CPU 故障场景
-│   ├── data2.csv              # 延迟故障场景
-│   ├── data3.csv              # 磁盘故障场景
-│   ├── data4.csv              # 网络丢包场景
-│   └── data5.csv              # 内存故障场景
+│   ├── data1.csv              
+│   ├── data2.csv              
+│   ├── data3.csv              
+│   ├── data4.csv              
+│   └── data5.csv              
 ├── knowledge_base/            # 知识库
 │   └── rca_knowledge.md       # RCA 专家知识
 ├── log/                       # 日志信息 （基于已有报告）

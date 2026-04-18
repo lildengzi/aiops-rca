@@ -37,6 +37,9 @@ class RCAState(TypedDict):
     max_iterations: int
     should_stop: bool
 
+    # 并行度控制
+    parallel_degree: int  # 当前并行度
+
     # 各阶段输出
     master_plan: str              # 运维专家的计划
     metric_results: Annotated[list[str], operator.add]   # 指标分析结果累积
@@ -62,6 +65,34 @@ def _create_llm() -> ChatOpenAI:
 
 # ===================== 节点函数定义 =====================
 
+import psutil
+
+def _calculate_optimal_parallel_degree() -> int:
+    """
+    根据系统资源计算最优并行度
+    """
+    # 获取CPU核心数
+    cpu_count = psutil.cpu_count(logical=True)
+    # 获取可用内存比例
+    memory = psutil.virtual_memory()
+    memory_available_percent = memory.available / memory.total
+    
+    # 基于系统资源计算并行度
+    # 保守策略：最多使用一半的CPU核心
+    max_parallel = max(1, cpu_count // 2)
+    
+    # 根据内存可用性调整
+    if memory_available_percent < 0.2:
+        # 内存不足，降低并行度
+        return max(1, max_parallel // 2)
+    elif memory_available_percent < 0.5:
+        # 内存紧张，保持保守并行度
+        return max(1, max_parallel)
+    else:
+        # 内存充足，可以增加并行度
+        return min(3, max_parallel)  # 最多并行3个智能体
+
+
 def master_node(state: RCAState) -> dict:
     """
     运维专家节点：分析问题、制定排查计划
@@ -69,6 +100,9 @@ def master_node(state: RCAState) -> dict:
     llm = _create_llm()
     iteration = state.get("iteration", 0)
     ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # 计算最优并行度
+    parallel_degree = _calculate_optimal_parallel_degree()
 
     # 构建上下文
     context_parts = []
@@ -90,6 +124,7 @@ def master_node(state: RCAState) -> dict:
 故障类型: {state['fault_type']}
 用户问题: {state['user_query']}
 当前迭代轮次: {iteration + 1}/{state['max_iterations']}
+当前系统并行度: {parallel_degree}
 
 请制定本轮排查计划。"""
 
@@ -102,6 +137,7 @@ def master_node(state: RCAState) -> dict:
     return {
         "master_plan": plan,
         "iteration": iteration + 1,
+        "parallel_degree": parallel_degree,
         "thinking_log": [log_entry],
     }
 
@@ -339,6 +375,17 @@ def should_continue_or_stop(state: RCAState) -> str:
     return "master"
 
 
+def aggregate_node(state: RCAState) -> dict:
+    """
+    并行结果汇总节点：等待所有并行任务完成后汇总结果
+    """
+    ts = datetime.now().strftime("%H:%M:%S")
+    log_entry = f"[{ts}] 并行任务汇总完成"
+    return {
+        "thinking_log": [log_entry],
+    }
+
+
 # ===================== 构建工作流图 =====================
 
 def build_rca_workflow() -> StateGraph:
@@ -346,7 +393,7 @@ def build_rca_workflow() -> StateGraph:
     构建完整的 RCA 多智能体工作流
 
     流程：
-    master → metric → log → trace → analyst → (继续 → master / 停止 → reporter) → END
+    master → (metric, log, trace) 并行 → aggregate → analyst → (继续 → master / 停止 → reporter) → END
     """
     workflow = StateGraph(RCAState)
 
@@ -355,17 +402,25 @@ def build_rca_workflow() -> StateGraph:
     workflow.add_node("metric", metric_node)
     workflow.add_node("log", log_node)
     workflow.add_node("trace", trace_node)
+    workflow.add_node("aggregate", aggregate_node)
     workflow.add_node("analyst", analyst_node)
     workflow.add_node("reporter", reporter_node)
 
     # 设置入口
     workflow.set_entry_point("master")
 
-    # 添加边
+    # 添加并行边：从 master 到三个数据收集智能体（并行执行）
     workflow.add_edge("master", "metric")
-    workflow.add_edge("metric", "log")
-    workflow.add_edge("log", "trace")
-    workflow.add_edge("trace", "analyst")
+    workflow.add_edge("master", "log")
+    workflow.add_edge("master", "trace")
+
+    # 三个数据收集智能体都指向汇总节点（等待所有并行任务完成）
+    workflow.add_edge("metric", "aggregate")
+    workflow.add_edge("log", "aggregate")
+    workflow.add_edge("trace", "aggregate")
+
+    # 汇总节点指向分析师节点
+    workflow.add_edge("aggregate", "analyst")
 
     # 条件分支：分析师决定是否继续
     workflow.add_conditional_edges(
@@ -410,6 +465,7 @@ def run_rca(
         "iteration": 0,
         "max_iterations": max_iterations,
         "should_stop": False,
+        "parallel_degree": 3,  # 默认并行度
         "master_plan": "",
         "metric_results": [],
         "log_results": [],

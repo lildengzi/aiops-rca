@@ -67,3 +67,4 @@ QUERY_PARSE_PROMPT = """你是一名运维专家，负责从用户的告警描�
 def get_query_parse_prompt() -> str:
     """返回用于解析用户输入故障类型的 prompt"""
     return QUERY_PARSE_PROMPT
+

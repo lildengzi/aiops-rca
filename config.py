@@ -5,9 +5,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 LLM_CONFIG = {
-    "api_key": os.getenv("OPENAI_API_KEY", "sk-1adf74e6e36241119c97566f1f448e7e"),
-    "base_url": os.getenv("OPENAI_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1"),
-    "model": os.getenv("LLM_MODEL", "qwen-plus"),
+    "api_key": os.getenv("OPENAI_API_KEY", "9825eed2-e8d8-40a6-8fd1-cfeb016a086e"),
+    "base_url": os.getenv("OPENAI_BASE_URL", "https://ark.cn-beijing.volces.com/api/v3"),
+    "model": os.getenv("LLM_MODEL", "doubao-seed-2-0-code-preview-260215"),
     "temperature": 0.1,
     "max_tokens": 4096,
 }
@@ -115,3 +115,4 @@ METRIC_CATEGORIES = {
     "traffic": ["load", "workload"],
     "error": ["error"],
 }
+
