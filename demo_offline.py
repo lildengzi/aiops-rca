@@ -243,16 +243,13 @@ def main():
 ╚══════════════════════════════════════════════════════════════╝
 """)
 
-    fault_types = list(FAULT_DATA_MAP.keys())
-    print(f"可用故障场景: {', '.join(fault_types)}\n")
-
-    for ft in fault_types:
-        try:
-            analyze_fault_scenario(ft)
-        except Exception as e:
-            print(f"\n {ft} 场景分析失败: {e}")
-            import traceback
-            traceback.print_exc()
+    target_fault_type = "cpu"
+    try:
+        analyze_fault_scenario(target_fault_type)
+    except Exception as e:
+        print(f"\n {target_fault_type} 场景分析失败: {e}")
+        import traceback
+        traceback.print_exc()
 
     print(f"\n{'='*70}")
     print(" 所有故障场景分析完成！")
@@ -261,3 +258,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

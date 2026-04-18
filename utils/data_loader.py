@@ -25,7 +25,7 @@ def get_realtime_data(fault_type: str) -> Optional[pd.DataFrame]:
 def load_fault_data(fault_type: str) -> pd.DataFrame:
     """
     加载指定故障类型的数据。
-    优先使用 simulator 注入的实时数据；
+    优先使用实时注入的数据；
     若无实时数据，则回退到经验库 CSV。
     """
     # 优先：实时数据缓存
@@ -132,3 +132,4 @@ def get_all_services(df: pd.DataFrame) -> list[str]:
                 services.add(col[: -len(suf)])
     services.discard("time")
     return sorted(services)
+
