@@ -2,6 +2,12 @@
 
 > 设计项目 —— 基于 LangChain + LangGraph 实现 ReAct 模式多智能体协作的 AIOps 根因分析系统
 
+![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=fff)
+![LangChain](https://img.shields.io/badge/LangChain-0.3+-1C3C3C?logo=langchain&logoColor=fff)
+![LangGraph](https://img.shields.io/badge/LangGraph-0.2+-3178C6)
+![Streamlit](https://img.shields.io/badge/Streamlit-1.30+-FF4B4B?logo=streamlit&logoColor=fff)
+![License](https://img.shields.io/badge/License-MIT-blue)
+
 ## 一、项目概述
 
 本系统构建了一个基于多智能体协作的 AI 系统最小可行性产品，模拟人类专家团队的协作模式，对 IT 系统中发生的故障进行自动化、智能化的根因分析（RCA）。系统采用 **LangChain + LangGraph** 框架，通过 **ReAct（Reasoning + Acting）** 模式，将大模型的推理能力与外部工具调用能力深度融合，实现对故障问题的动态拆解、迭代验证与逐步收敛。
