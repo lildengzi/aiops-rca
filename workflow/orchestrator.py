@@ -23,6 +23,7 @@ from tools.metric_tools import METRIC_TOOLS
 from tools.log_tools import LOG_TOOLS
 from tools.trace_tools import TRACE_TOOLS
 from tools.topology_tools import TOPOLOGY_TOOLS
+from knowledge_base.knowledge_manager import get_knowledge_manager
 
 
 # ===================== 工作流状态定义 =====================
@@ -31,6 +32,7 @@ class RCAState(TypedDict):
     # 用户输入
     user_query: str
     fault_type: str
+    full_analysis: bool  # 全指标分析模式
 
     # 迭代控制
     iteration: int
@@ -132,12 +134,17 @@ def master_node(state: RCAState) -> dict:
     response = llm.invoke(messages)
     plan = response.content
 
-    log_entry = f"[{ts}] 运维专家 - 第{iteration+1}轮计划:\n{plan[:500]}"
+    # 全指标分析模式强制启用所有数据来源
+    if state.get("full_analysis", True):
+        log_entry = f"[{ts}] 运维专家 - 第{iteration+1}轮计划(全指标模式):\n{plan[:500]}"
+    else:
+        log_entry = f"[{ts}] 运维专家 - 第{iteration+1}轮计划:\n{plan[:500]}"
 
     return {
         "master_plan": plan,
         "iteration": iteration + 1,
         "parallel_degree": parallel_degree,
+        "full_analysis": state.get("full_analysis", True),
         "thinking_log": [log_entry],
     }
 
@@ -145,18 +152,34 @@ def master_node(state: RCAState) -> dict:
 def metric_node(state: RCAState) -> dict:
     """
     指标分析节点：使用 ReAct 模式调用指标工具进行分析
+    支持全指标分析模式和容错处理
     """
     llm = _create_llm()
     ts = datetime.now().strftime("%H:%M:%S")
 
-    # 创建带工具的 ReAct Agent
-    metric_agent = create_react_agent(
-        llm,
-        tools=METRIC_TOOLS,
-        prompt=get_metric_prompt(),
-    )
+    try:
+        # 创建带工具的 ReAct Agent
+        metric_agent = create_react_agent(
+            llm,
+            tools=METRIC_TOOLS,
+            prompt=get_metric_prompt(),
+        )
 
-    task = f"""请分析 {state['fault_type']} 故障场景下的监控指标数据。
+        # 全指标分析模式：强制全局扫描+所有服务分析
+        if state.get("full_analysis", True):
+            task = f"""请全面分析 {state['fault_type']} 故障场景下的所有监控指标数据。
+
+运维专家的计划：
+{state.get('master_plan', '请先全局扫描发现异常服务')}
+
+请执行以下操作：
+1. 调用 query_all_services_overview 进行全局扫描，fault_type 为 "{state['fault_type']}"
+2. 对所有异常服务，调用 query_service_metrics 获取详细指标
+3. 对关键异常指标，调用 query_metric_correlation 分析相关性
+4. 总结所有发现的异常指标和关联关系
+5. 标记高风险指标"""
+        else:
+            task = f"""请分析 {state['fault_type']} 故障场景下的监控指标数据。
 
 运维专家的计划：
 {state.get('master_plan', '请先全局扫描发现异常服务')}
@@ -167,31 +190,56 @@ def metric_node(state: RCAState) -> dict:
 3. 对关键异常指标，调用 query_metric_correlation 分析相关性
 4. 总结分析结果"""
 
-    result = metric_agent.invoke({"messages": [HumanMessage(content=task)]})
-    # 提取最终回复
-    final_msg = result["messages"][-1].content if result["messages"] else "指标分析未返回结果"
-
-    log_entry = f"[{ts}] 指标分析完成: {final_msg[:300]}..."
-    return {
-        "metric_results": [final_msg],
-        "thinking_log": [log_entry],
-    }
+        result = metric_agent.invoke({"messages": [HumanMessage(content=task)]})
+        # 提取最终回复
+        final_msg = result["messages"][-1].content if result["messages"] else "指标分析未返回结果"
+        
+        log_entry = f"[{ts}] 指标分析完成: {final_msg[:300]}..."
+        return {
+            "metric_results": [final_msg],
+            "thinking_log": [log_entry],
+        }
+    except Exception as e:
+        log_entry = f"[{ts}] 指标分析异常: {str(e)[:100]}"
+        return {
+            "metric_results": [f"指标分析执行异常: {str(e)}"],
+            "thinking_log": [log_entry],
+        }
 
 
 def log_node(state: RCAState) -> dict:
     """
     日志分析节点：使用 ReAct 模式查询和分析日志
+    支持全指标分析模式和容错处理
     """
     llm = _create_llm()
     ts = datetime.now().strftime("%H:%M:%S")
 
-    log_agent = create_react_agent(
-        llm,
-        tools=LOG_TOOLS,
-        prompt=get_log_prompt(),
-    )
+    try:
+        log_agent = create_react_agent(
+            llm,
+            tools=LOG_TOOLS,
+            prompt=get_log_prompt(),
+        )
 
-    task = f"""请分析 {state['fault_type']} 故障场景下的日志数据。
+        # 全指标分析模式：强制全局搜索+所有异常服务日志
+        if state.get("full_analysis", True):
+            task = f"""请全面分析 {state['fault_type']} 故障场景下的所有日志数据。
+
+运维专家的计划：
+{state.get('master_plan', '请搜索全局错误模式')}
+
+已知的指标异常信息：
+{state['metric_results'][-1][:1000] if state.get('metric_results') else '暂无'}
+
+请执行以下操作：
+1. 调用 search_error_patterns 搜索全局错误模式，fault_type 为 "{state['fault_type']}"
+2. 对所有发现的异常服务，调用 query_service_logs 获取详细日志
+3. 分析错误频率、分布和相关性
+4. 总结所有错误模式和异常堆栈
+5. 标记高优先级错误"""
+        else:
+            task = f"""请分析 {state['fault_type']} 故障场景下的日志数据。
 
 运维专家的计划：
 {state.get('master_plan', '请搜索全局错误模式')}
@@ -204,30 +252,57 @@ def log_node(state: RCAState) -> dict:
 2. 对关键异常服务，调用 query_service_logs 获取详细日志
 3. 总结日志分析结果，关注错误模式和异常堆栈"""
 
-    result = log_agent.invoke({"messages": [HumanMessage(content=task)]})
-    final_msg = result["messages"][-1].content if result["messages"] else "日志分析未返回结果"
+        result = log_agent.invoke({"messages": [HumanMessage(content=task)]})
+        final_msg = result["messages"][-1].content if result["messages"] else "日志分析未返回结果"
 
-    log_entry = f"[{ts}] 日志分析完成: {final_msg[:300]}..."
-    return {
-        "log_results": [final_msg],
-        "thinking_log": [log_entry],
-    }
+        log_entry = f"[{ts}] 日志分析完成: {final_msg[:300]}..."
+        return {
+            "log_results": [final_msg],
+            "thinking_log": [log_entry],
+        }
+    except Exception as e:
+        log_entry = f"[{ts}] 日志分析异常: {str(e)[:100]}"
+        return {
+            "log_results": [f"日志分析执行异常: {str(e)}"],
+            "thinking_log": [log_entry],
+        }
 
 
 def trace_node(state: RCAState) -> dict:
     """
     链路分析节点：分析调用链和故障传播路径
+    支持全指标分析模式和容错处理
     """
     llm = _create_llm()
     ts = datetime.now().strftime("%H:%M:%S")
 
-    trace_agent = create_react_agent(
-        llm,
-        tools=TRACE_TOOLS + TOPOLOGY_TOOLS,
-        prompt=get_trace_prompt(),
-    )
+    try:
+        trace_agent = create_react_agent(
+            llm,
+            tools=TRACE_TOOLS + TOPOLOGY_TOOLS,
+            prompt=get_trace_prompt(),
+        )
 
-    task = f"""请分析 {state['fault_type']} 故障场景下的调用链数据和服务拓扑。
+        # 全指标分析模式：完整拓扑分析+全链路追踪
+        if state.get("full_analysis", True):
+            task = f"""请全面分析 {state['fault_type']} 故障场景下的调用链数据和服务拓扑。
+
+运维专家的计划：
+{state.get('master_plan', '请分析服务调用链')}
+
+已知的异常信息：
+- 指标: {state['metric_results'][-1][:800] if state.get('metric_results') else '暂无'}
+- 日志: {state['log_results'][-1][:500] if state.get('log_results') else '暂无'}
+
+请执行以下操作：
+1. 调用 get_full_topology 了解完整系统架构
+2. 调用 analyze_call_chain 分析完整故障传播路径，fault_type 为 "{state['fault_type']}"
+3. 对所有异常服务调用 query_service_traces 获取调用链详情
+4. 分析服务间依赖关系和故障传播方向
+5. 总结完整的故障传播路径和根因位置判断
+6. 标记关键瓶颈节点"""
+        else:
+            task = f"""请分析 {state['fault_type']} 故障场景下的调用链数据和服务拓扑。
 
 运维专家的计划：
 {state.get('master_plan', '请分析服务调用链')}
@@ -242,28 +317,48 @@ def trace_node(state: RCAState) -> dict:
 3. 对关键服务调用 query_service_traces 获取调用链详情
 4. 总结故障传播路径和根因位置判断"""
 
-    result = trace_agent.invoke({"messages": [HumanMessage(content=task)]})
-    final_msg = result["messages"][-1].content if result["messages"] else "链路分析未返回结果"
+        result = trace_agent.invoke({"messages": [HumanMessage(content=task)]})
+        final_msg = result["messages"][-1].content if result["messages"] else "链路分析未返回结果"
 
-    log_entry = f"[{ts}] 链路分析完成: {final_msg[:300]}..."
-    return {
-        "trace_results": [final_msg],
-        "thinking_log": [log_entry],
-    }
+        log_entry = f"[{ts}] 链路分析完成: {final_msg[:300]}..."
+        return {
+            "trace_results": [final_msg],
+            "thinking_log": [log_entry],
+        }
+    except Exception as e:
+        log_entry = f"[{ts}] 链路分析异常: {str(e)[:100]}"
+        return {
+            "trace_results": [f"链路分析执行异常: {str(e)}"],
+            "thinking_log": [log_entry],
+        }
 
 
 def analyst_node(state: RCAState) -> dict:
     """
     值班长节点：整合证据、推理判断、决定是否继续
+    集成知识库进行根因匹配和模式识别
     """
     llm = _create_llm()
     ts = datetime.now().strftime("%H:%M:%S")
+    
+    # 知识库增强：获取已知故障模式
+    km = get_knowledge_manager()
+    fault_pattern = km.get_fault_pattern(state['fault_type'])
+    recommended_roots = km.recommend_root_causes(state['fault_type'])
+    propagation_path = km.get_propagation_path(state['fault_type'])
+    mitigations = km.recommend_mitigations(state['fault_type'])
 
-    # 汇总所有证据
+    # 汇总所有证据 + 知识库增强信息
     evidence = f"""=== 第 {state['iteration']} 轮分析证据汇总 ===
 
 【故障类型】{state['fault_type']}
 【用户问题】{state['user_query']}
+
+【知识库参考信息】
+故障模式: {fault_pattern['name'] if fault_pattern else '未知'}
+典型根因: {chr(10).join([f'- {r}' for r in recommended_roots]) if recommended_roots else '无参考'}
+典型传播路径: {propagation_path}
+建议缓解措施: {chr(10).join([f'- {m}' for m in mitigations]) if mitigations else '无参考'}
 
 【运维专家计划】
 {state.get('master_plan', '无')}
@@ -323,16 +418,27 @@ def analyst_node(state: RCAState) -> dict:
 def reporter_node(state: RCAState) -> dict:
     """
     运营专家节点：生成最终的结构化分析报告
+    集成知识库提供标准缓解建议
     """
     llm = _create_llm()
     ts = datetime.now().strftime("%H:%M:%S")
+    
+    # 知识库增强：获取标准建议
+    km = get_knowledge_manager()
+    mitigations = km.recommend_mitigations(state['fault_type'])
+    fault_info = km.get_fault_pattern(state['fault_type'])
 
-    # 汇总所有分析数据
+    # 汇总所有分析数据 + 知识库增强
     all_evidence = f"""=== 完整分析数据 ===
 
 【故障类型】{state['fault_type']}
 【用户问题】{state['user_query']}
 【分析轮次】共 {state['iteration']} 轮
+【分析模式】{'全指标分析' if state.get('full_analysis', True) else '定向分析'}
+
+【知识库参考信息】
+故障模式: {fault_info['name'] if fault_info else '未知'}
+标准缓解建议: {chr(10).join([f'- {m}' for m in mitigations]) if mitigations else '无标准建议'}
 
 【所有指标分析结果】
 {chr(10).join(state.get('metric_results', ['暂无']))}
@@ -378,9 +484,29 @@ def should_continue_or_stop(state: RCAState) -> str:
 def aggregate_node(state: RCAState) -> dict:
     """
     并行结果汇总节点：等待所有并行任务完成后汇总结果
+    支持动态并行度和容错处理
     """
     ts = datetime.now().strftime("%H:%M:%S")
-    log_entry = f"[{ts}] 并行任务汇总完成"
+    
+    # 检查各智能体执行状态
+    status = []
+    if state.get("metric_results"):
+        status.append("指标分析: 完成")
+    else:
+        status.append("指标分析: 未执行/失败")
+        
+    if state.get("log_results"):
+        status.append("日志分析: 完成")
+    else:
+        status.append("日志分析: 未执行/失败")
+        
+    if state.get("trace_results"):
+        status.append("链路分析: 完成")
+    else:
+        status.append("链路分析: 未执行/失败")
+    
+    log_entry = f"[{ts}] 并行任务汇总完成 - {'; '.join(status)}"
+    
     return {
         "thinking_log": [log_entry],
     }
@@ -442,6 +568,8 @@ def run_rca(
     user_query: str,
     fault_type: str = "cpu",
     max_iterations: int = None,
+    full_analysis: bool = True,
+    progress_callback = None,
 ) -> dict:
     """
     执行根因分析
@@ -450,6 +578,8 @@ def run_rca(
         user_query: 用户问题描述
         fault_type: 故障类型 (cpu/delay/disk/loss/mem)
         max_iterations: 最大迭代次数
+        full_analysis: 是否启用全指标分析模式（默认启用）
+        progress_callback: 进度回调函数，接收(node_name, status)参数
 
     Returns:
         包含完整分析结果的状态字典
@@ -466,6 +596,7 @@ def run_rca(
         "max_iterations": max_iterations,
         "should_stop": False,
         "parallel_degree": 3,  # 默认并行度
+        "full_analysis": full_analysis,
         "master_plan": "",
         "metric_results": [],
         "log_results": [],
@@ -475,6 +606,16 @@ def run_rca(
         "thinking_log": [],
     }
 
-    # 执行工作流
-    final_state = app.invoke(initial_state)
-    return final_state
+    # 执行工作流并跟踪进度
+    if progress_callback:
+        # 使用stream模式跟踪每个节点执行
+        final_state = None
+        for event in app.stream(initial_state):
+            for node_name, output in event.items():
+                progress_callback(node_name, "completed")
+                final_state = output if output else final_state
+        return final_state
+    else:
+        # 执行工作流
+        final_state = app.invoke(initial_state)
+        return final_state

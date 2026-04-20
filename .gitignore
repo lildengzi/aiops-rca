@@ -23,6 +23,7 @@ logs/
 reports/
 *.md
 !README.md
+data/real_data/
 
 # OS
 .DS_Store

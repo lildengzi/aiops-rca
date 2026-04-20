@@ -25,7 +25,24 @@ def parse_fault_type_from_query(query: str) -> Optional[str]:
     """
     调用 LLM（analyst_agent）从用户自然语言中解析故障类型。
     返回 cpu/delay/disk/loss/mem 之一，无法识别时返回 None。
+    包含关键词匹配降级策略。
     """
+    # 首先尝试关键词快速匹配（无API调用）
+    query_lower = query.lower()
+    keyword_map = {
+        "cpu": ["cpu", "处理器", "占用高", "飙升", "使用率高"],
+        "mem": ["mem", "内存", "oom", "泄漏", "溢出", "heap"],
+        "delay": ["delay", "延迟", "慢", "超时", "latency", "响应慢"],
+        "disk": ["disk", "磁盘", "io", "存储", "满了", "空间不足"],
+        "loss": ["loss", "丢包", "网络", "连接失败", "错误率", "packet"]
+    }
+    
+    for fault_type, keywords in keyword_map.items():
+        for kw in keywords:
+            if kw in query_lower:
+                return fault_type
+    
+    # 关键词匹配失败，尝试LLM解析
     try:
         from langchain_openai import ChatOpenAI
         from langchain_core.messages import HumanMessage, SystemMessage
@@ -48,7 +65,8 @@ def parse_fault_type_from_query(query: str) -> Optional[str]:
             return fault_type
         return None
     except Exception:
-        return None
+        # LLM调用失败，返回默认cpu
+        return "cpu"
 
 
 def print_banner():
@@ -69,23 +87,40 @@ def print_banner():
     print(banner)
 
 
-def run_analysis(fault_type: str, query: str, max_iter: int = 3):
+def run_analysis(fault_type: str, query: str, max_iter: int = 3, full_analysis: bool = True):
     """执行一次完整的根因分析"""
     print(f"\n{'='*60}")
     print(f" 故障类型: {fault_type}")
     print(f" 分析问题: {query}")
     print(f" 最大迭代: {max_iter} 轮")
+    print(f" 全指标分析: {'启用' if full_analysis else '禁用'}")
     print(f" LLM模型:  {LLM_CONFIG['model']}")
     print(f" 开始时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"{'='*60}\n")
 
     print(" 正在启动多智能体工作流...\n")
+    
+    # 专家进度显示回调
+    def progress_callback(node_name, status):
+        agent_names = {
+            "master": "🎯 运维专家",
+            "metric": "📊 指标分析专家", 
+            "log": "📝 日志分析专家",
+            "trace": "🔗 链路分析专家",
+            "aggregate": "📦 数据汇总",
+            "analyst": "👨‍⚖️ 值班长",
+            "reporter": "📋 运营专家"
+        }
+        name = agent_names.get(node_name, node_name)
+        print(f"  ✅ {name} 任务完成")
 
     try:
         result = run_rca(
             user_query=query,
             fault_type=fault_type,
             max_iterations=max_iter,
+            full_analysis=full_analysis,
+            progress_callback=progress_callback,
         )
 
         # 输出过程日志
@@ -164,7 +199,8 @@ def interactive_mode():
         max_iter = input("最大迭代次数 (默认2): ").strip()
         max_iter = int(max_iter) if max_iter.isdigit() else 2
 
-        run_analysis(fault_type, query, max_iter)
+        full_analysis = input("启用全指标分析模式? (y/n, 默认y): ").strip().lower() != 'n'
+        run_analysis(fault_type, query, max_iter, full_analysis)
         print()
 
 
@@ -184,6 +220,8 @@ def main():
     parser.add_argument("--query", type=str, help="告警描述或问题（支持自然语言）")
     parser.add_argument("--max-iter", type=int, default=2, help="最大迭代次数（默认2）")
     parser.add_argument("--interactive", action="store_true", help="交互式模式")
+    parser.add_argument("--disable-full-analysis", action="store_true", 
+                        help="禁用全指标分析模式（仅针对目标服务）")
 
     args = parser.parse_args()
 
@@ -200,7 +238,7 @@ def main():
             else:
                 print(" 未能自动识别故障类型，请用 --fault 显式指定")
                 sys.exit(1)
-        run_analysis(fault_type, args.query, args.max_iter)
+        run_analysis(fault_type, args.query, args.max_iter, not args.disable_full_analysis)
     else:
         parser.print_help()
         print("\n提示: 使用 --interactive 进入交互模式，或用 --query 传入告警描述")
