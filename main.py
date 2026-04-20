@@ -100,19 +100,19 @@ def run_analysis(fault_type: str, query: str, max_iter: int = 3, full_analysis: 
 
     print(" 正在启动多智能体工作流...\n")
     
-    # 专家进度显示回调
+    # 专家进度显示回调 - 兼容Windows GBK编码
     def progress_callback(node_name, status):
         agent_names = {
-            "master": "🎯 运维专家",
-            "metric": "📊 指标分析专家", 
-            "log": "📝 日志分析专家",
-            "trace": "🔗 链路分析专家",
-            "aggregate": "📦 数据汇总",
-            "analyst": "👨‍⚖️ 值班长",
-            "reporter": "📋 运营专家"
+            "master": "运维专家",
+            "metric": "指标分析专家", 
+            "log": "日志分析专家",
+            "trace": "链路分析专家",
+            "aggregate": "数据汇总",
+            "analyst": "值班长",
+            "reporter": "运营专家"
         }
         name = agent_names.get(node_name, node_name)
-        print(f"  ✅ {name} 任务完成")
+        print(f"  [完成] {name} 任务完成")
 
     try:
         result = run_rca(

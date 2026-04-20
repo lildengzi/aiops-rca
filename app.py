@@ -63,15 +63,6 @@ if st.session_state.current_page == "analysis":
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-# 初始化会话状态
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-
-# 展示历史对话
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
-
 # 处理用户输入
 if prompt := st.chat_input("例如：过去1小时frontend服务CPU飙升，请分析根因"):
     # 1. 显示用户消息
@@ -81,10 +72,10 @@ if prompt := st.chat_input("例如：过去1小时frontend服务CPU飙升，请�
 
     # 2. 调用后端脚本
     with st.chat_message("assistant"):
+        start_time = time.time()
+        
         with st.status("🚀 正在启动 AIOps 多智能体分析...", expanded=True) as status:
-            st.write("正在解析自然语言查询...")
-            
-             # 构建命令行参数（使用当前 Python 可执行文件）
+            # 构建命令行参数（使用当前 Python 可执行文件）
             cmd = [sys.executable, "main.py", "--query", prompt, "--max-iter", str(max_iter)]
             if fault_type != "自动识别":
                 cmd.extend(["--fault", fault_type])
@@ -111,76 +102,107 @@ if prompt := st.chat_input("例如：过去1小时frontend服务CPU飙升，请�
                     cmd.extend(["--fault", "loss"])
                     st.info("🔍 自动匹配故障类型: 网络")
             
-            # 执行脚本并捕获实时输出（不使用 shell）
+            # 执行脚本并捕获实时输出
             process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, shell=False)
 
             output_container = st.empty()
             full_output = ""
+            agent_progress = {}
 
-            # 可靠的逐行读取输出（避免阻塞）
+            # 实时输出显示 - 与命令行一致的体验
             while True:
                 line = process.stdout.readline()
                 if line:
                     full_output += line
-                    output_container.code(full_output[-500:])  # 滚动显示最后500字符
+                    
+                    # 检测智能体完成状态
+                    if "[完成]" in line and "任务完成" in line:
+                        for agent_name in ["运维专家", "指标分析专家", "日志分析专家", "链路分析专家", "数据汇总", "值班长", "运营专家"]:
+                            if agent_name in line:
+                                agent_progress[agent_name] = "[✓]"
+                    
+                    # 根据用户选择显示输出
+                    if show_raw_logs:
+                        # 显示完整原始日志
+                        output_container.code(full_output[-1500:])
+                    else:
+                        # 只显示智能体进度，更简洁
+                        progress_text = "🔄 分析进行中...\n\n"
+                        progress_text += "  智能体执行状态:\n"
+                        for agent, status_icon in agent_progress.items():
+                            progress_text += f"    {status_icon} {agent}\n"
+                        progress_text += "\n  ⏳ 分析中..."
+                        output_container.markdown(progress_text)
                 else:
                     if process.poll() is not None:
-                        # 进程已退出且无更多输出
                         break
                     time.sleep(0.05)
 
-            # 等待进程结束并检查返回码
+            # 等待进程结束
             returncode = process.wait()
+            
+            # 处理执行结果
             if returncode == 0:
-                try:
-                    status.update(label="✅ 分析完成！", state="complete", expanded=False)
-                except Exception:
-                    pass
+                status.update(label="✅ 分析完成！", state="complete", expanded=False)
             else:
-                try:
-                    status.update(label="⚠️ 分析异常结束", state="error", expanded=False)
-                except Exception:
-                    pass
-                output_container.code(full_output)
-                st.error(f"后端分析脚本退出，返回码={returncode}。请检查日志。")
+                status.update(label="⚠️ 分析执行失败", state="error", expanded=True)
+                st.error(f"分析进程异常退出，返回码: {returncode}")
+                with st.expander("📋 查看错误日志", expanded=True):
+                    st.code(full_output, language="text")
+                st.session_state.messages.append({"role": "assistant", "content": "❌ 分析执行失败，请查看错误日志。"})
+                st.stop()
 
-        # 3. 寻找并展示最新的报告
-        # 使用基于文件的 reports 目录（更可靠的路径）
+        # 3. 寻找并展示本次分析生成的报告（通过时间戳判断新旧）
         report_dir = os.path.join(os.path.dirname(__file__), "reports")
+        latest_report = None
+        
         if os.path.exists(report_dir):
             list_of_files = glob.glob(os.path.join(report_dir, '*.md'))
-            if list_of_files:
-                latest_report = max(list_of_files, key=os.path.getctime)
-                
-                with st.expander("📄 查看原始分析日志", expanded=False):
-                    st.code(full_output)
-                
-                st.success(f"根因分析报告已生成：`{os.path.basename(latest_report)}`")
-                
-                # 读取并渲染 Markdown 报告
-                with open(latest_report, 'r', encoding='utf-8') as f:
-                    report_content = f.read()
-                
-                st.markdown("---")
-                st.markdown(report_content)
-                
-                # 显示原始日志（如果启用）
-                if show_raw_logs:
-                    with st.expander("📋 完整分析日志", expanded=False):
-                        st.code(full_output, language="text")
-                
-                # 添加下载按钮
-                st.download_button(
-                    label="📥 下载分析报告",
-                    data=report_content,
-                    file_name=os.path.basename(latest_report),
-                    mime="text/markdown"
-                )
-                
-                # 将结果存入会话
-                st.session_state.messages.append({"role": "assistant", "content": report_content})
+            # 严格只选择本次运行之后生成的报告（避免显示历史报告）
+            new_reports = [f for f in list_of_files if os.path.getctime(f) > start_time]
+            
+            if new_reports:
+                latest_report = max(new_reports, key=os.path.getctime)
             else:
-                st.error("未找到生成的报告文件，请检查 main.py 运行状态。")
+                # 容忍2秒的时间差，防止系统时间精度问题
+                new_reports = [f for f in list_of_files if os.path.getctime(f) > start_time - 2]
+                if new_reports:
+                    latest_report = max(new_reports, key=os.path.getctime)
+        
+        # 显示报告或失败信息
+        if latest_report:
+            with st.expander("📄 查看原始分析日志", expanded=False):
+                st.code(full_output)
+            
+            st.success(f"✅ 根因分析报告已生成：`{os.path.basename(latest_report)}`")
+            
+            # 读取并渲染 Markdown 报告
+            with open(latest_report, 'r', encoding='utf-8') as f:
+                report_content = f.read()
+            
+            st.markdown("---")
+            st.markdown(report_content)
+            
+            # 下载按钮
+            st.download_button(
+                label="📥 下载分析报告",
+                data=report_content,
+                file_name=os.path.basename(latest_report),
+                mime="text/markdown",
+                use_container_width=True
+            )
+            
+            st.session_state.messages.append({"role": "assistant", "content": report_content})
+        else:
+            st.error("❌ 分析执行完成但未生成报告文件")
+            with st.expander("📋 查看完整分析日志", expanded=True):
+                st.code(full_output, language="text")
+            st.info("可能的原因：\n"
+                    "1. LLM API 调用失败或超时\n"
+                    "2. 工作流执行异常中断\n"
+                    "3. 报告保存时发生错误\n"
+                    "4. 迭代过程未达到收敛条件")
+            st.session_state.messages.append({"role": "assistant", "content": "❌ 分析完成但未生成报告，请查看日志。"})
 
 # ========== 历史报告页面 ==========
 elif st.session_state.current_page == "history":
