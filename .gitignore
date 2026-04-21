@@ -12,11 +12,12 @@ dist/
 build/
 
 # IDE
-.idea/
-.vscode/
-.obsidian/
+.idea
+.vscode
+.obsidian
 *.swp
 *.swo
+.kilo
 
 # 项目生成
 logs/

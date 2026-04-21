@@ -1,147 +1,54 @@
 """
 知识库管理系统 - 基于数据集构建RCA专家知识库
 提供故障模式识别、根因匹配和历史案例查询功能
+新增RAG(检索增强生成)能力，支持语义化知识检索
+
+本模块为对外API入口，所有内部实现已模块化拆分：
+- fault_patterns.py: 预定义故障模式
+- rag_index.py: RAG向量索引与语义检索
+- data_analyzer.py: 数据集自动分析
+- storage.py: 知识库持久化存储
 """
-import json
 import os
-import pandas as pd
-from typing import Dict, List, Optional
-from utils.data_loader import load_fault_data, get_all_services
-from utils.anomaly_detection import detect_anomalies_zscore
+from typing import Dict, List, Optional, Any
+
+# 导入模块化组件
+from .fault_patterns import FAULT_PATTERNS
+from .rag_index import RAGKnowledgeIndex
+from .data_analyzer import FaultDataAnalyzer
+from .storage import KnowledgeStorage
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(__file__))
 KNOWLEDGE_BASE_DIR = os.path.join(PROJECT_ROOT, "knowledge_base")
 FAULT_PATTERNS_FILE = os.path.join(KNOWLEDGE_BASE_DIR, "fault_patterns.json")
 
-# 故障模式知识库
-FAULT_PATTERNS = {
-    "cpu": {
-        "name": "CPU资源耗尽故障",
-        "typical_metrics": ["cpu_usage", "system_load", "process_threads"],
-        "typical_services": ["frontend", "cartservice", "checkoutservice"],
-        "common_roots": [
-            "无限循环导致CPU占用过高",
-            "频繁GC导致CPU消耗",
-            "大量并发请求导致CPU瓶颈",
-            "计算密集型任务异常",
-            "死锁导致线程自旋"
-        ],
-        "propagation_path": "高CPU服务 → 上游服务延迟升高 → 级联超时",
-        "mitigation": [
-            "扩容CPU资源",
-            "优化代码逻辑减少CPU消耗",
-            "限制并发请求数",
-            "添加熔断机制"
-        ]
-    },
-    "mem": {
-        "name": "内存泄漏/溢出故障",
-        "typical_metrics": ["mem_usage", "heap_used", "gc_duration"],
-        "typical_services": ["cartservice", "productcatalogservice", "checkoutservice"],
-        "common_roots": [
-            "内存泄漏未释放对象",
-            "缓存数据无限制增长",
-            "大对象创建未回收",
-            "线程池泄漏",
-            "类加载器泄漏"
-        ],
-        "propagation_path": "内存占用升高 → GC频繁 → 响应延迟 → OOM崩溃",
-        "mitigation": [
-            "增加内存配额",
-            "排查内存泄漏点",
-            "限制缓存大小",
-            "优化对象创建逻辑"
-        ]
-    },
-    "delay": {
-        "name": "服务延迟异常故障",
-        "typical_metrics": ["latency_p99", "latency_p95", "request_duration"],
-        "typical_services": ["frontend", "recommendationservice", "productcatalogservice"],
-        "common_roots": [
-            "下游服务依赖延迟",
-            "数据库慢查询",
-            "网络传输延迟",
-            "锁竞争导致阻塞",
-            "资源池耗尽等待"
-        ],
-        "propagation_path": "下游服务延迟 → 上游调用超时 → 错误率升高",
-        "mitigation": [
-            "添加缓存层",
-            "优化数据库查询",
-            "异步处理非关键路径",
-            "降级非核心功能"
-        ]
-    },
-    "disk": {
-        "name": "磁盘I/O异常故障",
-        "typical_metrics": ["disk_io_wait", "disk_usage", "io_ops"],
-        "typical_services": ["redis", "productcatalogservice", "checkoutservice"],
-        "common_roots": [
-            "大量磁盘写入操作",
-            "日志无限制增长",
-            "磁盘碎片严重",
-            "磁盘配额耗尽",
-            "文件句柄泄漏"
-        ],
-        "propagation_path": "磁盘I/O升高 → 读写操作延迟 → 服务响应变慢",
-        "mitigation": [
-            "清理磁盘空间",
-            "配置日志轮转",
-            "迁移到高速存储",
-            "优化磁盘读写模式"
-        ]
-    },
-    "loss": {
-        "name": "网络丢包/连接故障",
-        "typical_metrics": ["error_rate", "connection_count", "packet_loss"],
-        "typical_services": ["frontend", "checkoutservice", "shippingservice"],
-        "common_roots": [
-            "网络拥塞导致丢包",
-            "连接数超过上限",
-            "防火墙规则拦截",
-            "DNS解析失败",
-            "服务实例宕机"
-        ],
-        "propagation_path": "网络异常 → 连接失败 → 请求重试风暴 → 级联故障",
-        "mitigation": [
-            "检查网络连通性",
-            "添加重试和熔断机制",
-            "扩容服务实例",
-            "优化连接池配置"
-        ]
-    }
-}
-
 
 class KnowledgeManager:
     """
     知识库管理器 - 提供故障模式查询、根因推荐、历史案例检索
+    
+    所有内部逻辑已模块化拆分，本类作为统一对外API门面
+    保持100%向后兼容性，原有调用方式完全不变
     """
     
     def __init__(self):
-        self.fault_patterns = FAULT_PATTERNS
+        self.fault_patterns = FAULT_PATTERNS.copy()
+        self.rag_index = RAGKnowledgeIndex()
         self._load_learned_patterns()
         
     def _load_learned_patterns(self):
         """加载已学习的故障模式"""
-        if os.path.exists(FAULT_PATTERNS_FILE):
-            try:
-                with open(FAULT_PATTERNS_FILE, 'r', encoding='utf-8') as f:
-                    learned = json.load(f)
-                    # 合并已知模式和学习到的模式
-                    for fault_type, pattern in learned.items():
-                        if fault_type in self.fault_patterns:
-                            self.fault_patterns[fault_type].update(pattern)
-                        else:
-                            self.fault_patterns[fault_type] = pattern
-            except Exception:
-                pass
+        learned = KnowledgeStorage.load_learned_patterns()
+        # 合并已知模式和学习到的模式
+        for fault_type, pattern in learned.items():
+            if fault_type in self.fault_patterns:
+                self.fault_patterns[fault_type].update(pattern)
+            else:
+                self.fault_patterns[fault_type] = pattern
     
     def save_learned_patterns(self):
         """保存学习到的故障模式"""
-        os.makedirs(KNOWLEDGE_BASE_DIR, exist_ok=True)
-        with open(FAULT_PATTERNS_FILE, 'w', encoding='utf-8') as f:
-            json.dump(self.fault_patterns, f, ensure_ascii=False, indent=2)
+        KnowledgeStorage.save_learned_patterns(self.fault_patterns)
     
     def get_fault_pattern(self, fault_type: str) -> Optional[Dict]:
         """获取指定故障类型的模式信息"""
@@ -179,54 +86,70 @@ class KnowledgeManager:
         pattern = self.get_fault_pattern(fault_type)
         return pattern["propagation_path"] if pattern else ""
     
+    def search_knowledge(self, query: str, top_k: int = 3) -> List[Dict[str, Any]]:
+        """
+        RAG语义检索 - 根据查询搜索相关知识库内容
+        可被智能体直接调用作为工具
+        """
+        return self.rag_index.search(query, top_k)
+    
+    def recommend_root_causes_enhanced(self, fault_type: str, 
+                                     anomaly_metrics: List[str] = None,
+                                     query_context: str = None) -> List[str]:
+        """
+        增强版根因推荐 - 结合结构化故障模式 + RAG语义检索
+        """
+        # 原有结构化推荐
+        base_causes = self.recommend_root_causes(fault_type, anomaly_metrics)
+        
+        # 新增RAG增强检索
+        if query_context and self.rag_index.vector_store:
+            rag_results = self.search_knowledge(query_context, top_k=2)
+            for result in rag_results:
+                # 从RAG结果中提取根因相关内容
+                content = result["content"]
+                if "根因" in content or "常见" in content or "导致" in content:
+                    # 简单提取相关句子作为补充
+                    lines = [l.strip() for l in content.split('\n') if l.strip()]
+                    base_causes.extend([l for l in lines if len(l) > 10][:2])
+        
+        # 去重并保持顺序
+        seen = set()
+        unique_causes = []
+        for cause in base_causes:
+            if cause not in seen:
+                seen.add(cause)
+                unique_causes.append(cause)
+        
+        return unique_causes
+    
+    def get_diagnosis_guidance(self, fault_type: str, query: str = None) -> Dict:
+        """
+        获取完整诊断指导 - 融合结构化知识 + RAG检索结果
+        """
+        pattern = self.get_fault_pattern(fault_type)
+        if not pattern:
+            return {}
+            
+        guidance = {
+            "fault_info": pattern,
+            "root_causes": self.recommend_root_causes(fault_type),
+            "mitigations": self.recommend_mitigations(fault_type),
+            "propagation": self.get_propagation_path(fault_type),
+            "related_knowledge": []
+        }
+        
+        # 补充RAG检索到的相关知识
+        if query and self.rag_index.vector_store:
+            guidance["related_knowledge"] = self.search_knowledge(query, top_k=2)
+            
+        return guidance
+    
     def analyze_fault_from_data(self, fault_type: str) -> Dict:
         """
         从数据集自动分析并生成故障知识库条目
         """
-        try:
-            df = load_fault_data(fault_type)
-        except ValueError:
-            return {}
-            
-        services = get_all_services(df)
-        anomaly_summary = {}
-        
-        # 分析每个服务的异常情况
-        for svc in services:
-            cols = [c for c in df.columns if c.startswith(f"{svc}_")]
-            anomalies = []
-            max_score = 0
-            
-            for col in cols:
-                res = detect_anomalies_zscore(df[col])
-                if res["is_anomalous"]:
-                    anomalies.append({
-                        "metric": col,
-                        "score": res["anomaly_score"],
-                        "max_z": res["stats"]["max_z_score"]
-                    })
-                    max_score = max(max_score, res["anomaly_score"])
-            
-            if anomalies:
-                anomaly_summary[svc] = {
-                    "max_anomaly_score": max_score,
-                    "anomalous_metrics": [a["metric"] for a in anomalies],
-                    "severity": "HIGH" if max_score > 0.8 else "MEDIUM"
-                }
-        
-        # 按严重程度排序
-        sorted_services = sorted(
-            anomaly_summary.items(), 
-            key=lambda x: x[1]["max_anomaly_score"], 
-            reverse=True
-        )
-        
-        return {
-            "fault_type": fault_type,
-            "typical_services_observed": [s[0] for s in sorted_services[:3]],
-            "anomaly_distribution": anomaly_summary,
-            "total_services_analyzed": len(services)
-        }
+        return FaultDataAnalyzer.analyze_fault_from_data(fault_type)
     
     def build_knowledge_from_all_datasets(self):
         """从所有数据集构建完整知识库"""
@@ -243,6 +166,20 @@ class KnowledgeManager:
         
         self.save_learned_patterns()
         return results
+    
+    def is_rag_available(self) -> bool:
+        """检查RAG功能是否可用"""
+        return self.rag_index.is_available()
+    
+    def get_knowledge_summary(self) -> Dict:
+        """获取知识库概览信息"""
+        return {
+            "fault_patterns_count": len(self.fault_patterns),
+            "rag_enabled": self.is_rag_available(),
+            "knowledge_documents": os.path.basename(os.path.join(KNOWLEDGE_BASE_DIR, "rca_knowledge.md")),
+            "learned_patterns_file": os.path.basename(FAULT_PATTERNS_FILE),
+            "module_version": "2.0.0"
+        }
 
 
 # 全局知识库实例

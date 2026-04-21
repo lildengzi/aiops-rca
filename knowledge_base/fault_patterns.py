@@ -1,0 +1,104 @@
+"""
+故障模式定义模块
+包含所有预定义的故障模式知识库
+"""
+from typing import Dict
+
+# 故障模式知识库
+FAULT_PATTERNS: Dict[str, Dict] = {
+    "cpu": {
+        "name": "CPU资源耗尽故障",
+        "typical_metrics": ["cpu_usage", "system_load", "process_threads"],
+        "typical_services": ["frontend", "cartservice", "checkoutservice"],
+        "common_roots": [
+            "无限循环导致CPU占用过高",
+            "频繁GC导致CPU消耗",
+            "大量并发请求导致CPU瓶颈",
+            "计算密集型任务异常",
+            "死锁导致线程自旋"
+        ],
+        "propagation_path": "高CPU服务 → 上游服务延迟升高 → 级联超时",
+        "mitigation": [
+            "扩容CPU资源",
+            "优化代码逻辑减少CPU消耗",
+            "限制并发请求数",
+            "添加熔断机制"
+        ]
+    },
+    "mem": {
+        "name": "内存泄漏/溢出故障",
+        "typical_metrics": ["mem_usage", "heap_used", "gc_duration"],
+        "typical_services": ["cartservice", "productcatalogservice", "checkoutservice"],
+        "common_roots": [
+            "内存泄漏未释放对象",
+            "缓存数据无限制增长",
+            "大对象创建未回收",
+            "线程池泄漏",
+            "类加载器泄漏"
+        ],
+        "propagation_path": "内存占用升高 → GC频繁 → 响应延迟 → OOM崩溃",
+        "mitigation": [
+            "增加内存配额",
+            "排查内存泄漏点",
+            "限制缓存大小",
+            "优化对象创建逻辑"
+        ]
+    },
+    "delay": {
+        "name": "服务延迟异常故障",
+        "typical_metrics": ["latency_p99", "latency_p95", "request_duration"],
+        "typical_services": ["frontend", "recommendationservice", "productcatalogservice"],
+        "common_roots": [
+            "下游服务依赖延迟",
+            "数据库慢查询",
+            "网络传输延迟",
+            "锁竞争导致阻塞",
+            "资源池耗尽等待"
+        ],
+        "propagation_path": "下游服务延迟 → 上游调用超时 → 错误率升高",
+        "mitigation": [
+            "添加缓存层",
+            "优化数据库查询",
+            "异步处理非关键路径",
+            "降级非核心功能"
+        ]
+    },
+    "disk": {
+        "name": "磁盘I/O异常故障",
+        "typical_metrics": ["disk_io_wait", "disk_usage", "io_ops"],
+        "typical_services": ["redis", "productcatalogservice", "checkoutservice"],
+        "common_roots": [
+            "大量磁盘写入操作",
+            "日志无限制增长",
+            "磁盘碎片严重",
+            "磁盘配额耗尽",
+            "文件句柄泄漏"
+        ],
+        "propagation_path": "磁盘I/O升高 → 读写操作延迟 → 服务响应变慢",
+        "mitigation": [
+            "清理磁盘空间",
+            "配置日志轮转",
+            "迁移到高速存储",
+            "优化磁盘读写模式"
+        ]
+    },
+    "loss": {
+        "name": "网络丢包/连接故障",
+        "typical_metrics": ["error_rate", "connection_count", "packet_loss"],
+        "typical_services": ["frontend", "checkoutservice", "shippingservice"],
+        "common_roots": [
+            "网络拥塞导致丢包",
+            "连接数超过上限",
+            "防火墙规则拦截",
+            "DNS解析失败",
+            "服务实例宕机"
+        ],
+        "propagation_path": "网络异常 → 连接失败 → 请求重试风暴 → 级联故障",
+        "mitigation": [
+            "检查网络连通性",
+            "添加重试和熔断机制",
+            "扩容服务实例",
+            "优化连接池配置"
+        ]
+    }
+}
