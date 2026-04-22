@@ -136,6 +136,11 @@ def _show_report(start_time, full_output):
         )
         
         st.session_state.messages.append({"role": "assistant", "content": report_content})
+        
+        st.markdown("---")
+        from .feedback_page import render_feedback_widget
+        fault_id = os.path.basename(latest_report).replace(".md", "")
+        render_feedback_widget(fault_id, report_content[:500])
     else:
         st.error("❌ 分析执行完成但未生成报告文件")
         with st.expander("📋 查看完整分析日志", expanded=True):

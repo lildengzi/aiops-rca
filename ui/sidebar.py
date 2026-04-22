@@ -1,11 +1,12 @@
 import streamlit as st
 
-PAGE_OPTIONS = ["📊 故障趋势", "🔍 故障分析", "📜 历史报告", "📚 知识库管理"]
+PAGE_OPTIONS = ["📊 故障趋势", "🔍 故障分析", "📜 历史报告", "📚 知识库管理", "💬 反馈管理"]
 PAGE_KEYS = {
     "📊 故障趋势": "dashboard",
     "🔍 故障分析": "analysis",
     "📜 历史报告": "history",
-    "📚 知识库管理": "knowledge"
+    "📚 知识库管理": "knowledge",
+    "💬 反馈管理": "feedback"
 }
 
 

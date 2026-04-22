@@ -1,10 +1,11 @@
 """
 AIOps 多智能体根因分析系统 - 主入口
 基于 LangChain + LangGraph 实现 ReAct 模式多智能体协作
+支持故障类型自动检测，用户可输入任意告警描述
 
 使用方式:
-    python main.py --fault cpu --query "frontend服务延迟升高，请分析根因"
-    python main.py --fault mem --query "系统出现OOM告警"
+    python main.py --query "frontend服务延迟升高，请分析根因"  # 自动检测
+    python main.py --fault cpu --query "CPU异常"   # 也可显式指定
     python main.py --interactive
 """
 import argparse

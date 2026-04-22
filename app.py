@@ -4,21 +4,24 @@ from ui import (
     render_analysis_page,
     render_history_page,
     render_knowledge_page,
-    render_dashboard_page
+    render_dashboard_page,
+    render_feedback_page
 )
 
 PAGE_TITLES = {
     "dashboard": "📊 AIOps 智能根因分析平台 - 故障趋势监控",
     "analysis": "🔍 AIOps 智能根因分析平台",
     "history": "📜 AIOps 智能根因分析平台 - 历史报告",
-    "knowledge": "📚 AIOps 智能根因分析平台 - 知识库管理"
+    "knowledge": "📚 AIOps 智能根因分析平台 - 知识库管理",
+    "feedback": "💬 AIOps 智能根因分析平台 - 用户反馈"
 }
 
 PAGE_DESCRIPTIONS = {
     "dashboard": "查看系统故障趋势和高频故障统计",
     "analysis": "💡 直接输入告警描述，系统将自动识别故障类型并进行多轮分析。",
     "history": "查看历史故障分析报告。",
-    "knowledge": "管理和编辑故障知识库。"
+    "knowledge": "管理和编辑故障知识库。",
+    "feedback": "提交诊断反馈，帮助改进模型。"
 }
 
 st.set_page_config(page_title="AIOps 智能根因分析平台", layout="wide")
@@ -45,3 +48,5 @@ elif current_page == "history":
     render_history_page()
 elif current_page == "knowledge":
     render_knowledge_page()
+elif current_page == "feedback":
+    render_feedback_page()
