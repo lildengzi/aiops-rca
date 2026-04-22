@@ -21,52 +21,12 @@ from config import FAULT_DATA_MAP, LLM_CONFIG
 from workflow.orchestrator import run_rca
 
 
-def parse_fault_type_from_query(query: str) -> Optional[str]:
+def detect_fault_type_from_data(query: str) -> str:
     """
-    调用 LLM（analyst_agent）从用户自然语言中解析故障类型。
-    返回 cpu/delay/disk/loss/mem 之一，无法识别时返回 None。
-    包含关键词匹配降级策略。
+    用户输入任意告警信息，系统自动从数据中检测故障类型。
+    首次迭代时由工作流自动分析数据特征得出结论。
     """
-    # 首先尝试关键词快速匹配（无API调用）
-    query_lower = query.lower()
-    keyword_map = {
-        "cpu": ["cpu", "处理器", "占用高", "飙升", "使用率高"],
-        "mem": ["mem", "内存", "oom", "泄漏", "溢出", "heap"],
-        "delay": ["delay", "延迟", "慢", "超时", "latency", "响应慢"],
-        "disk": ["disk", "磁盘", "io", "存储", "满了", "空间不足"],
-        "loss": ["loss", "丢包", "网络", "连接失败", "错误率", "packet"]
-    }
-    
-    for fault_type, keywords in keyword_map.items():
-        for kw in keywords:
-            if kw in query_lower:
-                return fault_type
-    
-    # 关键词匹配失败，尝试LLM解析
-    try:
-        from langchain_openai import ChatOpenAI
-        from langchain_core.messages import HumanMessage, SystemMessage
-        from agents.analyst_agent import get_query_parse_prompt
-
-        llm = ChatOpenAI(
-            model=LLM_CONFIG["model"],
-            api_key=LLM_CONFIG["api_key"],
-            base_url=LLM_CONFIG["base_url"],
-            temperature=0,
-            max_tokens=64,
-        )
-        messages = [
-            SystemMessage(content=get_query_parse_prompt()),
-            HumanMessage(content=query),
-        ]
-        resp = llm.invoke(messages)
-        fault_type = resp.content.strip().lower()
-        if fault_type in FAULT_DATA_MAP:
-            return fault_type
-        return None
-    except Exception:
-        # LLM调用失败，返回默认cpu
-        return "cpu"
+    return "unknown"
 
 
 def print_banner():
@@ -90,7 +50,7 @@ def print_banner():
 def run_analysis(fault_type: str, query: str, max_iter: int = 3, full_analysis: bool = True):
     """执行一次完整的根因分析"""
     print(f"\n{'='*60}")
-    print(f" 故障类型: {fault_type}")
+    print(f" 故障类型: {fault_type if fault_type != 'unknown' else '自动检测中'}")
     print(f" 分析问题: {query}")
     print(f" 最大迭代: {max_iter} 轮")
     print(f" 全指标分析: {'启用' if full_analysis else '禁用'}")
@@ -167,10 +127,9 @@ def run_analysis(fault_type: str, query: str, max_iter: int = 3, full_analysis: 
 def interactive_mode():
     """交互式模式 - 支持自然语言输入"""
     print_banner()
-    print("可用故障类型:", ", ".join(FAULT_DATA_MAP.keys()))
     print("输入 'quit' 退出\n")
-    print("提示: 可直接输入自然语言，如 '过去1小时frontend服务CPU飙升'"
-          "，系统将自动识别故障类型\n")
+    print("提示: 可直接输入任意告警描述，如 'frontend服务报错'"
+          "，系统将自动分析数据并识别故障类型\n")
 
     while True:
         print("-" * 40)
@@ -181,20 +140,8 @@ def interactive_mode():
         if not query:
             continue
 
-        # 优先尝试用 LLM 解析故障类型
-        print(" 正在识别故障类型...")
-        fault_type = parse_fault_type_from_query(query)
-
-        if not fault_type:
-            # LLM 解析失败则手动选择
-            fault_type = input(
-                f" 未能自动识别，请手动输入故障类型 ({'/'.join(FAULT_DATA_MAP.keys())}): "
-            ).strip().lower()
-            if fault_type not in FAULT_DATA_MAP:
-                print(f" 不支持的故障类型: {fault_type}")
-                continue
-        else:
-            print(f" 识别到故障类型: {fault_type}")
+        fault_type = "unknown"
+        print(" 故障类型将根据数据分析自动识别")
 
         max_iter = input("最大迭代次数 (默认2): ").strip()
         max_iter = int(max_iter) if max_iter.isdigit() else 2
@@ -215,8 +162,8 @@ def main():
   python main.py --interactive
         """,
     )
-    parser.add_argument("--fault", type=str, choices=list(FAULT_DATA_MAP.keys()),
-                        help="故障类型（可选，不填则由 LLM 从 query 自动识别）")
+    parser.add_argument("--fault", type=str, default="unknown",
+                        help="故障类型（可选，默认unknown由系统自动检测）")
     parser.add_argument("--query", type=str, help="告警描述或问题（支持自然语言）")
     parser.add_argument("--max-iter", type=int, default=2, help="最大迭代次数（默认2）")
     parser.add_argument("--interactive", action="store_true", help="交互式模式")
@@ -229,15 +176,7 @@ def main():
         interactive_mode()
     elif args.query:
         print_banner()
-        fault_type = args.fault
-        if not fault_type:
-            print(" 正在识别故障类型...")
-            fault_type = parse_fault_type_from_query(args.query)
-            if fault_type:
-                print(f" 识别到故障类型: {fault_type}")
-            else:
-                print(" 未能自动识别故障类型，请用 --fault 显式指定")
-                sys.exit(1)
+        fault_type = args.fault if args.fault != "unknown" else "unknown"
         run_analysis(fault_type, args.query, args.max_iter, not args.disable_full_analysis)
     else:
         parser.print_help()

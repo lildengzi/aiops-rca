@@ -100,6 +100,7 @@ def run_rca(
     initial_state: RCAState = {
         "user_query": user_query,
         "fault_type": fault_type,
+        "detected_fault_type": "",  # 自动检测后的故障类型
         "iteration": 0,
         "max_iterations": max_iterations,
         "should_stop": False,

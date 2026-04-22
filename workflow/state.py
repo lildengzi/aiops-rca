@@ -9,7 +9,8 @@ class RCAState(TypedDict):
     """根因分析工作流的全局状态"""
     # 用户输入
     user_query: str
-    fault_type: str
+    fault_type: str  # 初始故障类型（可能为unknown）
+    detected_fault_type: str  # 自动检测后的故障类型
     full_analysis: bool  # 全指标分析模式
 
     # 迭代控制

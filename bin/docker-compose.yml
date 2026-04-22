@@ -2,12 +2,36 @@ version: '3.8'
 
 services:
   aiops-rca:
-    build: .
+    build:
+      context: ..
+      dockerfile: bin/Dockerfile
+    image: aiops-rca:latest
+    container_name: aiops-rca
     ports:
       - "8501:8501"
     volumes:
-      - ./reports:/app/reports
+      - ../reports:/app/reports
+      - ../logs:/app/logs
+      - ../knowledge_base:/app/knowledge_base
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://dashscope.aliyuncs.com/compatible-mode/v1}
       - LLM_MODEL=${LLM_MODEL:-qwen-plus}
+      - LLM_TEMPERATURE=${LLM_TEMPERATURE:-0.1}
+      - MAX_ITERATIONS=${MAX_ITERATIONS:-5}
+      - CONVERGENCE_THRESHOLD=${CONVERGENCE_THRESHOLD:-0.8}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '0.5'
+          memory: 1G

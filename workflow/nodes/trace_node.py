@@ -14,11 +14,15 @@ from workflow.state import RCAState
 
 def trace_node(state: RCAState) -> dict:
     """
-    链路分析节点：分析调用链和故障传播路径
+    链路分析���点：分析调用链和故障传播路径
     支持全指标分析模式和容错处理
+    支持故障类型自动检测
     """
     llm = _create_llm()
     ts = datetime.now().strftime("%H:%M:%S")
+
+    # 使用检测到的故障类型（优先）或初始故障类型
+    fault_type = state.get("detected_fault_type") or state.get("fault_type", "cpu")
 
     try:
         trace_agent = create_react_agent(
@@ -29,7 +33,7 @@ def trace_node(state: RCAState) -> dict:
 
         # 全指标分析模式：完整拓扑分析+全链路追踪
         if state.get("full_analysis", True):
-            task = f"""请全面分析 {state['fault_type']} 故障场景下的调用链数据和服务拓扑。
+            task = f"""请全面分析 {fault_type} 故障场景下的调用链数据和服务拓扑。
 
 运维专家的计划：
 {state.get('master_plan', '请分析服务调用链')}
@@ -40,13 +44,13 @@ def trace_node(state: RCAState) -> dict:
 
 请执行以下操作：
 1. 调用 get_full_topology 了解完整系统架构
-2. 调用 analyze_call_chain 分析完整故障传播路径，fault_type 为 "{state['fault_type']}"
+2. 调用 analyze_call_chain 分析完整故障传播路径，fault_type 为 "{fault_type}"
 3. 对所有异常服务调用 query_service_traces 获取调用链详情
 4. 分析服务间依赖关系和故障传播方向
 5. 总结完整的故障传播路径和根因位置判断
 6. 标记关键瓶颈节点"""
         else:
-            task = f"""请分析 {state['fault_type']} 故障场景下的调用链数据和服务拓扑。
+            task = f"""请分析 {fault_type} 故障场景下的调用链数据和服务拓扑。
 
 运维专家的计划：
 {state.get('master_plan', '请分析服务调用链')}
@@ -57,7 +61,7 @@ def trace_node(state: RCAState) -> dict:
 
 请执行以下操作：
 1. 调用 get_full_topology 了解系统架构
-2. 调用 analyze_call_chain 分析故障传播路径，fault_type 为 "{state['fault_type']}"
+2. 调用 analyze_call_chain 分析故障传播路径，fault_type 为 "{fault_type}"
 3. 对关键服务调用 query_service_traces 获取调用链详情
 4. 总结故障传播路径和根因位置判断"""
 
