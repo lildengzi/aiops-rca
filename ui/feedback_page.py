@@ -19,7 +19,7 @@ def _get_feedback_file(fault_id):
 
 
 def save_feedback(fault_id, original_diagnosis, user_correction, feedback_type, comment):
-    """保存用户反馈"""
+    """Save user feedback"""
     _ensure_feedback_dir()
     
     feedback_file = _get_feedback_file(fault_id)
@@ -41,7 +41,7 @@ def save_feedback(fault_id, original_diagnosis, user_correction, feedback_type, 
 
 
 def load_feedback(fault_id):
-    """加载反馈"""
+    """Load feedback"""
     feedback_file = _get_feedback_file(fault_id)
     if os.path.exists(feedback_file):
         with open(feedback_file, "r", encoding="utf-8") as f:
@@ -50,7 +50,7 @@ def load_feedback(fault_id):
 
 
 def load_all_feedback():
-    """加载所有反馈"""
+    """Load all feedback"""
     _ensure_feedback_dir()
     feedbacks = []
     
@@ -63,70 +63,70 @@ def load_all_feedback():
 
 
 def render_feedback_widget(fault_id, original_diagnosis):
-    """渲染反馈组件（用于分析页面）"""
+    """Render feedback widget (for analysis page)"""
     if not fault_id or not original_diagnosis:
         return None
     
     st.markdown("---")
-    st.subheader("💬 诊断反馈")
+    st.subheader("Diagnostic Feedback")
     
     existing = load_feedback(fault_id)
     if existing:
-        st.success(f"您已提交过反馈: [{existing['feedback_type']}] {existing.get('comment', '')}")
+        st.success(f"You have submitted feedback: [{existing['feedback_type']}] {existing.get('comment', '')}")
         return None
     
-    st.info("请对本次诊断结果进行评价和反馈")
+    st.info("Please evaluate and provide feedback on this diagnosis")
     
     safe_id = str(fault_id)[:50].replace("/", "_").replace("-", "_")
     
     feedback_type = st.selectbox(
-        "反馈类型",
+        "Feedback Type",
         ["correct", "incorrect", "partial", "missing"],
-        format_func=lambda x: {"correct": "✓ 诊断正确", "incorrect": "✗ 诊断错误", "partial": "△ 部分准确", "missing": "○ 缺少信息"}.get(x, x),
+        format_func=lambda x: {"correct": "Correct", "incorrect": "Incorrect", "partial": "Partial", "missing": "Missing Info"}.get(x, x),
         key=f"fb_type_{safe_id}"
     )
     
     correction = st.text_area(
-        "纠正/补充诊断内容",
-        placeholder="如果诊断不正确，请给出正确的诊断...",
+        "Correct/Add diagnosis",
+        placeholder="If diagnosis is incorrect, please provide the correct diagnosis...",
         key=f"fb_corr_{safe_id}"
     )
     
     comment = st.text_area(
-        "备注（可选）",
-        placeholder="其他建议...",
+        "Comment (optional)",
+        placeholder="Other suggestions...",
         key=f"fb_note_{safe_id}"
     )
     
-    if st.button("💾 提交反馈", key=f"fb_submit_{safe_id}"):
+    if st.button("Submit Feedback", key=f"fb_submit_{safe_id}"):
         save_feedback(fault_id, original_diagnosis, correction, feedback_type, comment)
-        st.success("✅ 反馈已提交！感谢您的帮助改进模型。")
+        st.success("Feedback submitted! Thank you for helping improve the model.")
         st.rerun()
     
     return None
 
 
 def render_feedback_page():
-    """渲染反馈管理页面"""
-    st.header("💬 用户反馈管理")
+    """Render feedback management page"""
+    st.header("User Feedback Management")
     
     feedbacks = load_all_feedback()
     
     if not feedbacks:
-        st.info("暂无反馈记录")
+        st.info("No feedback records")
         return
     
-    st.info(f"共 {len(feedbacks)} 条反馈")
+    st.info(f"Total {len(feedbacks)} feedback entries")
     
     for fb in feedbacks:
-        with st.expander(f"📝 {fb.get('fault_id', 'Unknown')} - {fb.get('feedback_type', 'N/A')} ({fb.get('timestamp', '')[:19]})"):
+        with st.expander(f"{fb.get('fault_id', 'Unknown')} - {fb.get('feedback_type', 'N/A')} ({fb.get('timestamp', '')[:19]})"):
             col1, col2 = st.columns(2)
             with col1:
-                st.markdown("**原始诊断**")
+                st.markdown("**Original Diagnosis**")
                 st.text(fb.get("original_diagnosis", "")[:200] + "...")
             with col2:
-                st.markdown("**用户纠正**")
+                st.markdown("**User Correction**")
                 st.text(fb.get("user_correction", "")[:200] + "...")
             
-            st.markdown(f"**备注**: {fb.get('comment', '无')}")
-            st.markdown(f"**状态**: {fb.get('status', 'pending')}")
+            st.markdown(f"**Comment**: {fb.get('comment', 'None')}")
+            st.markdown(f"**Status**: {fb.get('status', 'pending')}")

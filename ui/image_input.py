@@ -9,20 +9,20 @@ ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "bmp", "webp"}
 
 
 def render_image_input():
-    """前端 - 图像/图表输入组件"""
-    st.subheader("🖼️ 图表上传")
+    """Frontend - Image/Chart input component"""
+    st.subheader("Image Upload")
     
     if "image_description" not in st.session_state:
         st.session_state.image_description = ""
     
     uploaded_file = st.file_uploader(
-        "上传监控图表（柱状图/折线图）",
+        "Upload monitoring chart (bar/line)",
         type=list(ALLOWED_EXTENSIONS),
         key="image_input_file"
     )
     
     if uploaded_file is not None and not st.session_state.image_description:
-        with st.spinner("正在分析图表..."):
+        with st.spinner("Analyzing chart..."):
             from input_modules import ImageInputBackend
             backend = ImageInputBackend()
             
@@ -51,15 +51,15 @@ def render_image_input():
                 st.image(img, caption=uploaded_file.name, width='stretch')
         
         with col_a2:
-            st.markdown("**📊 图表分析**")
-            st.write(f"类型: {analysis.get('chart_type', 'unknown')}")
-            st.write(f"最大值: {analysis.get('max_value', 0)}")
-            st.write(f"最小值: {analysis.get('min_value', 0)}")
-            st.write(f"平均值: {analysis.get('avg_value', 0)}")
-            st.write(f"趋势: {analysis.get('trend', 'unknown')}")
+            st.markdown("**Chart Analysis**")
+            st.write(f"Type: {analysis.get('chart_type', 'unknown')}")
+            st.write(f"Max: {analysis.get('max_value', 0)}")
+            st.write(f"Min: {analysis.get('min_value', 0)}")
+            st.write(f"Avg: {analysis.get('avg_value', 0)}")
+            st.write(f"Trend: {analysis.get('trend', 'unknown')}")
             
             if analysis.get("data_points"):
-                st.markdown("**数据点:**")
+                st.markdown("**Data Points:**")
                 for pt in analysis["data_points"][:5]:
                     st.caption(f"{pt['time']}: {pt['value']}")
     
@@ -68,14 +68,14 @@ def render_image_input():
         pass
     with col_b2:
         st.write("")
-        if st.button("📤 发送", key="image_submit") and st.session_state.get("chart_analysis"):
+        if st.button("Send", key="image_submit") and st.session_state.get("chart_analysis"):
             text = st.session_state.image_description
             st.session_state.image_description = ""
             if "chart_analysis" in st.session_state:
                 del st.session_state["chart_analysis"]
             return text
         
-        if st.button("🗑️ 清除", key="image_clear"):
+        if st.button("Clear", key="image_clear"):
             st.session_state.image_description = ""
             if "chart_analysis" in st.session_state:
                 del st.session_state["chart_analysis"]

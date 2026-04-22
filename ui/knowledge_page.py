@@ -4,12 +4,12 @@ from knowledge_base.knowledge_manager import get_knowledge_manager
 
 
 def render_knowledge_page():
-    """渲染知识库管理页面"""
-    st.header("📚 知识库管理")
+    """Render knowledge base management page"""
+    st.header("Knowledge Base Management")
     
     km = get_knowledge_manager()
     
-    tab1, tab2, tab3 = st.tabs(["📖 故障模式库", "✏️ 编辑知识库", "🔧 工具"])
+    tab1, tab2, tab3 = st.tabs(["Fault Patterns", "Edit Knowledge", "Tools"])
     
     with tab1:
         _render_fault_patterns(km)
@@ -22,45 +22,45 @@ def render_knowledge_page():
 
 
 def _render_fault_patterns(km):
-    """渲染故障模式列表"""
-    st.subheader("已定义故障模式")
+    """Render fault pattern list"""
+    st.subheader("Defined Fault Patterns")
     for fault_type, pattern in km.fault_patterns.items():
-        with st.expander(f"🔹 {fault_type.upper()} - {pattern['name']}", expanded=False):
-            st.write(f"**典型指标**: {', '.join(pattern['typical_metrics'])}")
-            st.write(f"**典型服务**: {', '.join(pattern['typical_services'])}")
+        with st.expander(f"{fault_type.upper()} - {pattern['name']}", expanded=False):
+            st.write(f"**Typical Metrics**: {', '.join(pattern['typical_metrics'])}")
+            st.write(f"**Typical Services**: {', '.join(pattern['typical_services'])}")
             
-            st.write("**常见根因**:")
+            st.write("**Common Root Causes**:")
             for root in pattern['common_roots']:
                 st.write(f"- {root}")
             
-            st.write("**典型传播路径**:")
+            st.write("**Typical Propagation Path**:")
             st.info(pattern['propagation_path'])
             
-            st.write("**缓解措施**:")
+            st.write("**Mitigation**:")
             for mitigation in pattern['mitigation']:
                 st.write(f"- {mitigation}")
 
 
 def _render_edit_pattern(km):
-    """渲染编辑故障模式"""
-    st.subheader("编辑故障模式")
-    fault_type_edit = st.selectbox("选择故障类型:", list(km.fault_patterns.keys()))
+    """Render edit fault pattern"""
+    st.subheader("Edit Fault Pattern")
+    fault_type_edit = st.selectbox("Select fault type:", list(km.fault_patterns.keys()))
     
     if fault_type_edit:
         pattern = km.fault_patterns[fault_type_edit]
         
         col1, col2 = st.columns(2)
         with col1:
-            new_name = st.text_input("故障名称:", value=pattern['name'])
-            new_metrics = st.text_area("典型指标 (每行一个):", value='\n'.join(pattern['typical_metrics']))
-            new_services = st.text_area("典型服务 (每行一个):", value='\n'.join(pattern['typical_services']))
+            new_name = st.text_input("Fault name:", value=pattern['name'])
+            new_metrics = st.text_area("Typical metrics (one per line):", value='\n'.join(pattern['typical_metrics']))
+            new_services = st.text_area("Typical services (one per line):", value='\n'.join(pattern['typical_services']))
         
         with col2:
-            new_roots = st.text_area("常见根因 (每行一个):", value='\n'.join(pattern['common_roots']))
-            new_propagation = st.text_area("传播路径:", value=pattern['propagation_path'])
-            new_mitigations = st.text_area("缓解措施 (每行一个):", value='\n'.join(pattern['mitigation']))
+            new_roots = st.text_area("Common root causes (one per line):", value='\n'.join(pattern['common_roots']))
+            new_propagation = st.text_area("Propagation path:", value=pattern['propagation_path'])
+            new_mitigations = st.text_area("Mitigation (one per line):", value='\n'.join(pattern['mitigation']))
         
-        if st.button("💾 保存修改", width='stretch'):
+        if st.button("Save Changes", width='stretch'):
             km.fault_patterns[fault_type_edit] = {
                 "name": new_name,
                 "typical_metrics": [m.strip() for m in new_metrics.split('\n') if m.strip()],
@@ -70,22 +70,22 @@ def _render_edit_pattern(km):
                 "mitigation": [m.strip() for m in new_mitigations.split('\n') if m.strip()]
             }
             km.save_learned_patterns()
-            st.success("知识库已更新！")
+            st.success("Knowledge base updated!")
 
 
 def _render_tools(km):
-    """渲染知识库工具"""
-    st.subheader("知识库工具")
-    if st.button("🔄 从数据集重建知识库", width='stretch'):
-        with st.spinner("正在分析所有数据集..."):
+    """Render knowledge base tools"""
+    st.subheader("Knowledge Base Tools")
+    if st.button("Rebuild Knowledge Base", width='stretch'):
+        with st.spinner("Analyzing all datasets..."):
             results = km.build_knowledge_from_all_datasets()
-            st.success("知识库重建完成！")
+            st.success("Knowledge base rebuilt!")
             st.json(results, expanded=False)
     
-    if st.button("📋 导出知识库", width='stretch'):
+    if st.button("Export Knowledge Base", width='stretch'):
         kb_json = json.dumps(km.fault_patterns, ensure_ascii=False, indent=2)
         st.download_button(
-            label="下载知识库JSON",
+            label="Download Knowledge Base JSON",
             data=kb_json,
             file_name="fault_patterns.json",
             mime="application/json",

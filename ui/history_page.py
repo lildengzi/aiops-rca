@@ -4,8 +4,8 @@ import glob
 
 
 def render_history_page():
-    """渲染历史报告页面"""
-    st.header("📜 历史分析报告")
+    """Render history reports page"""
+    st.header("Historical Analysis Reports")
     
     report_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "reports")
     if os.path.exists(report_dir):
@@ -13,10 +13,10 @@ def render_history_page():
         if list_of_files:
             list_of_files.sort(key=os.path.getctime, reverse=True)
             
-            st.info(f"共找到 {len(list_of_files)} 份历史报告")
+            st.info(f"Found {len(list_of_files)} historical reports")
             
             selected_report = st.selectbox(
-                "选择报告查看:",
+                "Select report to view:",
                 list_of_files,
                 format_func=lambda x: os.path.basename(x)
             )
@@ -31,16 +31,16 @@ def render_history_page():
                     st.markdown(report_content)
                 with col2:
                     st.download_button(
-                        label="📥 下载报告",
+                        label="Download Report",
                         data=report_content,
                         file_name=os.path.basename(selected_report),
                         mime="text/markdown",
                         width='stretch'
                     )
-                    if st.button("🗑️ 删除报告", width='stretch', type="secondary"):
+                    if st.button("Delete Report", width='stretch', type="secondary"):
                         os.remove(selected_report)
                         st.rerun()
         else:
-            st.warning("暂无历史报告，请先运行故障分析。")
+            st.warning("No historical reports. Please run fault analysis first.")
     else:
-        st.warning("报告目录不存在，请先运行故障分析。")
+        st.warning("Report directory does not exist. Please run fault analysis first.")

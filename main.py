@@ -50,16 +50,16 @@ def print_banner():
 
 def run_analysis(fault_type: str, query: str, max_iter: int = 3, full_analysis: bool = True):
     """执行一次完整的根因分析"""
-    print(f"\n{'='*60}")
-    print(f" 故障类型: {fault_type if fault_type != 'unknown' else '自动检测中'}")
-    print(f" 分析问题: {query}")
-    print(f" 最大迭代: {max_iter} 轮")
-    print(f" 全指标分析: {'启用' if full_analysis else '禁用'}")
-    print(f" LLM模型:  {LLM_CONFIG['model']}")
-    print(f" 开始时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"{'='*60}\n")
+    print(f"\n{'='*60}", flush=True)
+    print(f" 故障类型: {fault_type if fault_type != 'unknown' else '自动检测中'}", flush=True)
+    print(f" 分析问题: {query}", flush=True)
+    print(f" 最大迭代: {max_iter} 轮", flush=True)
+    print(f" 全指标分析: {'启用' if full_analysis else '禁用'}", flush=True)
+    print(f" LLM模型:  {LLM_CONFIG['model']}", flush=True)
+    print(f" 开始时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", flush=True)
+    print(f"{'='*60}\n", flush=True)
 
-    print(" 正在启动多智能体工作流...\n")
+    print(" 正在启动多智能体工作流...\n", flush=True)
     
     # 专家进度显示回调 - 兼容Windows GBK编码
     def progress_callback(node_name, status):
@@ -73,7 +73,7 @@ def run_analysis(fault_type: str, query: str, max_iter: int = 3, full_analysis: 
             "reporter": "运营专家"
         }
         name = agent_names.get(node_name, node_name)
-        print(f"  [完成] {name} 任务完成")
+        print(f"  [完成] {name} 任务完成", flush=True)
 
     try:
         result = run_rca(
@@ -85,18 +85,18 @@ def run_analysis(fault_type: str, query: str, max_iter: int = 3, full_analysis: 
         )
 
         # 输出过程日志
-        print(f"\n{'='*60}")
-        print(" 分析过程日志")
-        print(f"{'='*60}")
+        print(f"\n{'='*60}", flush=True)
+        print(" 分析过程日志", flush=True)
+        print(f"{'='*60}", flush=True)
         for log in result.get("thinking_log", []):
-            print(f"  {log}")
+            print(f"  {log}", flush=True)
 
         # 输出最终报告
-        print(f"\n{'='*60}")
-        print(" 最终分析报告")
-        print(f"{'='*60}")
+        print(f"\n{'='*60}", flush=True)
+        print(" 最终分析报告", flush=True)
+        print(f"{'='*60}", flush=True)
         report = result.get("final_report", "报告生成失败")
-        print(report)
+        print(report, flush=True)
 
         # 保存报告
         report_dir = os.path.join(os.path.dirname(__file__), "reports")
@@ -115,11 +115,11 @@ def run_analysis(fault_type: str, query: str, max_iter: int = 3, full_analysis: 
             for log in result.get("thinking_log", []):
                 f.write(f"- {log}\n")
 
-        print(f"\n 报告已保存至: {report_path}")
+        print(f"\n 报告已保存至: {report_path}", flush=True)
         return result
 
     except Exception as e:
-        print(f"\n 分析执行失败: {e}")
+        print(f"\n 分析执行失败: {e}", flush=True)
         import traceback
         traceback.print_exc()
         return None

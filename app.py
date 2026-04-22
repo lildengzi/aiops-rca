@@ -9,25 +9,25 @@ from ui import (
 )
 
 PAGE_TITLES = {
-    "dashboard": "📊 AIOps 智能根因分析平台 - 故障趋势监控",
-    "analysis": "🔍 AIOps 智能根因分析平台",
-    "history": "📜 AIOps 智能根因分析平台 - 历史报告",
-    "knowledge": "📚 AIOps 智能根因分析平台 - 知识库管理",
-    "feedback": "💬 AIOps 智能根因分析平台 - 用户反馈"
+    "dashboard": "AIOps - Fault Trend Monitor",
+    "analysis": "AIOps - Fault Analysis",
+    "history": "AIOps - History Reports",
+    "knowledge": "AIOps - Knowledge Base",
+    "feedback": "AIOps - User Feedback"
 }
 
 PAGE_DESCRIPTIONS = {
-    "dashboard": "查看系统故障趋势和高频故障统计",
-    "analysis": "💡 直接输入告警描述，系统将自动识别故障类型并进行多轮分析。",
-    "history": "查看历史故障分析报告。",
-    "knowledge": "管理和编辑故障知识库。",
-    "feedback": "提交诊断反馈，帮助改进模型。"
+    "dashboard": "View system fault trends and high-frequency fault statistics",
+    "analysis": "Enter alert description, system will auto-detect fault type.",
+    "history": "View historical fault analysis reports.",
+    "knowledge": "Manage fault knowledge base.",
+    "feedback": "Submit diagnostic feedback to help improve the model."
 }
 
-st.set_page_config(page_title="AIOps 智能根因分析平台", layout="wide")
+st.set_page_config(page_title="AIOps Fault Analysis Platform", layout="wide")
 
 if "selected_page" not in st.session_state:
-    st.session_state.selected_page = "🔍 故障分析"
+    st.session_state.selected_page = "analysis"
 if "current_page" not in st.session_state:
     st.session_state.current_page = "analysis"
 

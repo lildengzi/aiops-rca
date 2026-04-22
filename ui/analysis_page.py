@@ -6,6 +6,9 @@ import glob
 import time
 
 
+AGENT_ORDER = ["运维专家", "指标分析专家", "日志分析专家", "链路分析专家", "数据汇总", "值班长", "运营专家"]
+
+
 def render_analysis_page(config):
     """渲染故障分析页面"""
     if "messages" not in st.session_state:
@@ -17,7 +20,7 @@ def render_analysis_page(config):
 
     prompt = None
     
-    input_tab1, input_tab2, input_tab3 = st.tabs(["💬 文本输入", "🎤 语音输入", "🖼️ 图表上传"])
+    input_tab1, input_tab2, input_tab3 = st.tabs(["Text Input", "Voice Input", "Image Upload"])
     
     with input_tab1:
         prompt = st.chat_input("例如：过去1小时frontend服务CPU飙升，请分析根因")
@@ -45,62 +48,96 @@ def _run_analysis(prompt, config):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
-        start_time = time.time()
+        st.info("Fault type will be auto-detected from data analysis")
         
-        with st.status("🚀 正在启动 AIOps 多智能体分析...", expanded=True) as status:
-            cmd = [sys.executable, "main.py", "--query", prompt, "--max-iter", str(config["max_iter"])]
-            if not config["full_analysis"]:
-                cmd.append("--disable-full-analysis")
-            
-            st.info("🔍 故障类型将根据数据分析自动识别")
-            
-            process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, shell=False)
+        cmd = [sys.executable, "main.py", "--query", prompt, "--max-iter", str(config["max_iter"])]
+        if not config["full_analysis"]:
+            cmd.append("--disable-full-analysis")
+        
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, shell=False)
 
-            output_container = st.empty()
-            full_output = ""
+        col_progress, col_logs = st.columns([1, 2])
+        
+        with col_progress:
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+            completed_count = 0
+            total_agents = len(AGENT_ORDER)
             agent_progress = {}
+        
+        with col_logs:
+            log_container = st.empty()
+            log_container.code("等待分析启动...", language="text")
+        
+        full_output = ""
+        start_time = time.time()
 
-            while True:
-                line = process.stdout.readline()
-                if line:
-                    full_output += line
+        while True:
+            line = process.stdout.readline()
+            if line:
+                full_output += line
+                
+                if "[完成]" in line and "任务完成" in line:
+                    for agent_name in AGENT_ORDER:
+                        if agent_name in line and agent_name not in agent_progress:
+                            agent_progress[agent_name] = True
+                            completed_count += 1
+                            break
+                
+                with col_progress:
+                    progress_percent = min(int((completed_count / total_agents) * 100), 99)
+                    progress_bar.progress(progress_percent)
                     
-                    if "[完成]" in line and "任务完成" in line:
-                        for agent_name in ["运维专家", "指标分析专家", "日志分析专家", "链路分析专家", "数据汇总", "值班长", "运营专家"]:
-                            if agent_name in line:
-                                agent_progress[agent_name] = "[✓]"
+                    status_info = "Running...\n\n"
+                    status_info += "**智能体状态:**\n"
+                    for agent in AGENT_ORDER:
+                        if agent in agent_progress:
+                            status_info += f"✅ {agent}\n"
+                        else:
+                            status_info += f"⏳ {agent}\n"
                     
-                    if config["show_raw_logs"]:
-                        output_container.code(full_output[-1500:])
+                    current_agent = AGENT_ORDER[completed_count] if completed_count < total_agents else None
+                    if current_agent:
+                        status_info += f"\n**正在执行:**\n{current_agent}..."
                     else:
-                        progress_text = "🔄 分析进行中...\n\n"
-                        progress_text += "  智能体执行状态:\n"
-                        for agent, status_icon in agent_progress.items():
-                            progress_text += f"    {status_icon} {agent}\n"
-                        progress_text += "\n  ⏳ 分析中..."
-                        output_container.markdown(progress_text)
-                else:
-                    if process.poll() is not None:
-                        break
-                    time.sleep(0.05)
-
-            returncode = process.wait()
-            
-            if returncode == 0:
-                status.update(label="✅ 分析完成！", state="complete", expanded=False)
+                        status_info += f"\n完成: {completed_count}/{total_agents}"
+                    
+                    status_text.markdown(status_info)
+                
+                with col_logs:
+                    log_container.code(full_output[-5000:], language="text")
             else:
-                status.update(label="⚠️ 分析执行失败", state="error", expanded=True)
-                st.error(f"分析进程异常退出，返回码: {returncode}")
-                with st.expander("📋 查看错误日志", expanded=True):
-                    st.code(full_output, language="text")
-                st.session_state.messages.append({"role": "assistant", "content": "❌ 分析执行失败，请查看错误日志。"})
-                st.stop()
+                if process.poll() is not None:
+                    break
+                time.sleep(0.05)
 
-        _show_report(start_time, full_output)
+        returncode = process.wait()
+        
+        with col_progress:
+            progress_bar.progress(100)
+            status_text.markdown("✅ 分析完成!")
+        
+        with col_logs:
+            log_container.code(full_output, language="text")
+        
+        if returncode != 0:
+            st.error(f"⚠️ 分析进程异常退出，返回码: {returncode}")
+            with st.expander("View Error Log", expanded=True):
+                st.code(full_output, language="text")
+            st.session_state.messages.append({"role": "assistant", "content": "❌ 分析执行失败，请查看错误日志。"})
+            st.stop()
+
+        _show_report(start_time, full_output, col_progress, col_logs)
 
 
-def _show_report(start_time, full_output):
+def _show_report(start_time, full_output, col_progress=None, col_logs=None):
     """展示分析报告"""
+    if col_progress:
+        col_progress.empty()
+    
+    st.caption("Analysis Log")
+    st.code(full_output, language="text")
+    
     report_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "reports")
     latest_report = None
     
@@ -116,7 +153,7 @@ def _show_report(start_time, full_output):
                 latest_report = max(new_reports, key=os.path.getctime)
     
     if latest_report:
-        with st.expander("📄 查看原始分析日志", expanded=False):
+        with st.expander("View Raw Log", expanded=False):
             st.code(full_output)
         
         st.success(f"✅ 根因分析报告已生成：`{os.path.basename(latest_report)}`")
@@ -128,7 +165,7 @@ def _show_report(start_time, full_output):
         st.markdown(report_content)
         
         st.download_button(
-            label="📥 下载分析报告",
+            label="Download Report",
             data=report_content,
             file_name=os.path.basename(latest_report),
             mime="text/markdown",
@@ -143,7 +180,7 @@ def _show_report(start_time, full_output):
         render_feedback_widget(fault_id, report_content[:500])
     else:
         st.error("❌ 分析执行完成但未生成报告文件")
-        with st.expander("📋 查看完整分析日志", expanded=True):
+        with st.expander("View Full Log", expanded=True):
             st.code(full_output, language="text")
         st.info("可能的原因：\n"
                 "1. LLM API 调用失败或超时\n"

@@ -1,26 +1,26 @@
 import streamlit as st
 
-PAGE_OPTIONS = ["📊 故障趋势", "🔍 故障分析", "📜 历史报告", "📚 知识库管理", "💬 反馈管理"]
+PAGE_OPTIONS = ["Fault Trend", "Fault Analysis", "History", "Knowledge Base", "Feedback"]
 PAGE_KEYS = {
-    "📊 故障趋势": "dashboard",
-    "🔍 故障分析": "analysis",
-    "📜 历史报告": "history",
-    "📚 知识库管理": "knowledge",
-    "💬 反馈管理": "feedback"
+    "Fault Trend": "dashboard",
+    "Fault Analysis": "analysis",
+    "History": "history",
+    "Knowledge Base": "knowledge",
+    "Feedback": "feedback"
 }
 
 
 def render_sidebar():
-    """渲染侧边栏导航"""
+    """Render sidebar navigation"""
     if "selected_page" not in st.session_state:
-        st.session_state.selected_page = "🔍 故障分析"
+        st.session_state.selected_page = "Fault Analysis"
     
-    st.sidebar.header("📋 导航菜单")
+    st.sidebar.header("Navigation")
     
     selected = st.sidebar.selectbox(
-        "选择功能:",
+        "Select function:",
         PAGE_OPTIONS,
-        index=PAGE_OPTIONS.index(st.session_state.selected_page),
+        index=PAGE_OPTIONS.index(st.session_state.selected_page) if st.session_state.selected_page in PAGE_OPTIONS else 1,
         key="page_selector"
     )
     
@@ -31,25 +31,25 @@ def render_sidebar():
     
     st.sidebar.markdown("---")
     
-    config = {"max_iter": 2, "fault_type": "自动识别", "full_analysis": True, "show_raw_logs": False}
+    config = {"max_iter": 2, "fault_type": "Auto", "full_analysis": True, "show_raw_logs": False}
     
     if st.session_state.current_page == "analysis":
-        st.sidebar.header("⚙️ 分析配置")
-        config["max_iter"] = st.sidebar.slider("最大迭代次数 (max-iter)", 1, 5, 2)
+        st.sidebar.header("Analysis Config")
+        config["max_iter"] = st.sidebar.slider("Max iterations", 1, 5, 2)
         config["fault_type"] = st.sidebar.selectbox(
-            "强制指定故障类型 (可选)", 
-            ["自动识别", "cpu", "delay", "disk", "loss", "mem"]
+            "Force fault type (optional)", 
+            ["Auto", "cpu", "delay", "disk", "loss", "mem"]
         )
         config["full_analysis"] = st.sidebar.checkbox(
-            "启用全指标分析模式", 
+            "Full analysis mode", 
             value=True, 
-            help="分析所有服务的所有指标，而非仅目标服务"
+            help="Analyze all services and metrics"
         )
-        config["show_raw_logs"] = st.sidebar.checkbox("显示原始分析日志", value=False)
+        config["show_raw_logs"] = st.sidebar.checkbox("Show raw logs", value=False)
     
     st.sidebar.markdown("---")
-    st.sidebar.subheader("📊 系统状态")
-    st.sidebar.info("✅ 多智能体系统就绪")
-    st.sidebar.success("🔍 知识库已加载")
+    st.sidebar.subheader("System Status")
+    st.sidebar.info("Multi-agent system ready")
+    st.sidebar.success("Knowledge base loaded")
     
     return config

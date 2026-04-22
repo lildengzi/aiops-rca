@@ -1,0 +1,177 @@
+[
+  {
+    "fault_type": "cpu",
+    "timestamp": "2026-04-22T16:59:20.866263",
+    "data_info": {
+      "rows": 4201,
+      "services": 14,
+      "metrics": 50
+    },
+    "methods": {
+      "threshold_3sigma": {
+        "total_anomalies": 2709,
+        "anomaly_ratio": 0.012896929302547013,
+        "detected_services": 13
+      },
+      "zscore": {
+        "total_anomalies": 2709,
+        "anomaly_ratio": 0.012896929302547013,
+        "detected_services": 13
+      },
+      "iqr": {
+        "total_anomalies": 9729,
+        "anomaly_ratio": 0.04631754344203761,
+        "detected_services": 13
+      },
+      "ewma": {
+        "total_anomalies": 0,
+        "anomaly_ratio": 0.0,
+        "detected_services": 0
+      },
+      "multi_agent_llm": {
+        "note": "需要LLM API调用",
+        "capability": "可识别复杂故障模式、因果推理、根因分析"
+      }
+    }
+  },
+  {
+    "fault_type": "mem",
+    "timestamp": "2026-04-22T16:59:21.006310",
+    "data_info": {
+      "rows": 4201,
+      "services": 14,
+      "metrics": 50
+    },
+    "methods": {
+      "threshold_3sigma": {
+        "total_anomalies": 1834,
+        "anomaly_ratio": 0.008731254463223042,
+        "detected_services": 12
+      },
+      "zscore": {
+        "total_anomalies": 1834,
+        "anomaly_ratio": 0.008731254463223042,
+        "detected_services": 12
+      },
+      "iqr": {
+        "total_anomalies": 9356,
+        "anomaly_ratio": 0.04454177576767436,
+        "detected_services": 13
+      },
+      "ewma": {
+        "total_anomalies": 0,
+        "anomaly_ratio": 0.0,
+        "detected_services": 0
+      },
+      "multi_agent_llm": {
+        "note": "需要LLM API调用",
+        "capability": "可识别复杂故障模式、因果推理、根因分析"
+      }
+    }
+  },
+  {
+    "fault_type": "delay",
+    "timestamp": "2026-04-22T16:59:21.107244",
+    "data_info": {
+      "rows": 721,
+      "services": 13,
+      "metrics": 57
+    },
+    "methods": {
+      "threshold_3sigma": {
+        "total_anomalies": 437,
+        "anomaly_ratio": 0.0106333795654184,
+        "detected_services": 11
+      },
+      "zscore": {
+        "total_anomalies": 437,
+        "anomaly_ratio": 0.0106333795654184,
+        "detected_services": 11
+      },
+      "iqr": {
+        "total_anomalies": 1888,
+        "anomaly_ratio": 0.04594009295082366,
+        "detected_services": 13
+      },
+      "ewma": {
+        "total_anomalies": 0,
+        "anomaly_ratio": 0.0,
+        "detected_services": 0
+      },
+      "multi_agent_llm": {
+        "note": "需要LLM API调用",
+        "capability": "可识别复杂故障模式、因果推理、根因分析"
+      }
+    }
+  },
+  {
+    "fault_type": "disk",
+    "timestamp": "2026-04-22T16:59:21.216739",
+    "data_info": {
+      "rows": 721,
+      "services": 13,
+      "metrics": 56
+    },
+    "methods": {
+      "threshold_3sigma": {
+        "total_anomalies": 455,
+        "anomaly_ratio": 0.011269070735090153,
+        "detected_services": 10
+      },
+      "zscore": {
+        "total_anomalies": 455,
+        "anomaly_ratio": 0.011269070735090153,
+        "detected_services": 10
+      },
+      "iqr": {
+        "total_anomalies": 1668,
+        "anomaly_ratio": 0.041311670299187635,
+        "detected_services": 10
+      },
+      "ewma": {
+        "total_anomalies": 0,
+        "anomaly_ratio": 0.0,
+        "detected_services": 0
+      },
+      "multi_agent_llm": {
+        "note": "需要LLM API调用",
+        "capability": "可识别复杂故障模式、因果推理、根因分析"
+      }
+    }
+  },
+  {
+    "fault_type": "loss",
+    "timestamp": "2026-04-22T16:59:21.321967",
+    "data_info": {
+      "rows": 721,
+      "services": 13,
+      "metrics": 59
+    },
+    "methods": {
+      "threshold_3sigma": {
+        "total_anomalies": 386,
+        "anomaly_ratio": 0.009074026187733609,
+        "detected_services": 12
+      },
+      "zscore": {
+        "total_anomalies": 386,
+        "anomaly_ratio": 0.009074026187733609,
+        "detected_services": 12
+      },
+      "iqr": {
+        "total_anomalies": 1845,
+        "anomaly_ratio": 0.043371964550177486,
+        "detected_services": 12
+      },
+      "ewma": {
+        "total_anomalies": 0,
+        "anomaly_ratio": 0.0,
+        "detected_services": 0
+      },
+      "multi_agent_llm": {
+        "note": "需要LLM API调用",
+        "capability": "可识别复杂故障模式、因果推理、根因分析"
+      }
+    }
+  }
+]
