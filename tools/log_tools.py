@@ -67,6 +67,7 @@ WARN_TEMPLATES = [
 
 
 def _generate_trace_id():
+    """生成随机 Trace ID"""
     return hashlib.md5(str(random.random()).encode()).hexdigest()[:16]
 
 
@@ -77,7 +78,13 @@ def _generate_logs_for_service(
     timestamp_base: int,
     count: int = 5,
 ) -> list[dict]:
-    """根据异常信息为特定服务生成模拟日志"""
+    """\brief 根据异常信息为特定服务生成模拟日志
+    \param service 服务名称
+    \param fault_type 故障类型 (cpu/delay/disk/loss/mem)
+    \param anomaly_info 异常信息字典，包含 metric 和 anomaly_score
+    \param timestamp_base 基础时间戳
+    \param count 期望生成的日志条数
+    \return 生成的模拟日志列表"""
     logs = []
     # 选择合适的模板
     category = fault_type
@@ -150,18 +157,12 @@ def query_service_logs(
     log_level: str = "ERROR",
     max_logs: int = 8,
 ) -> str:
-    """
-    查询指定服务的日志数据。基于指标异常自动生成对应的模拟日志。
-
-    Args:
-        fault_type: 故障数据集类型 (cpu/delay/disk/loss/mem)
-        service_name: 服务名称
-        log_level: 日志级别过滤 (ERROR/WARN/ALL)
-        max_logs: 最大返回条数
-
-    Returns:
-        JSON格式的日志数据
-    """
+    """\brief 查询指定服务的日志数据，基于指标异常自动生成模拟日志
+    \param fault_type 故障数据集类型 (cpu/delay/disk/loss/mem)
+    \param service_name 服务名称
+    \param log_level 日志级别过滤 (ERROR/WARN/ALL)
+    \param max_logs 最大返回条数
+    \return JSON格式的日志数据，包含 logs 列表和 survey_summary 摘要"""
     try:
         df = load_fault_data(fault_type)
     except ValueError as e:
@@ -232,16 +233,10 @@ def query_service_logs(
 
 @tool
 def search_error_patterns(fault_type: str, keyword: str = "") -> str:
-    """
-    在所有服务中搜索错误模式，用于全局日志扫描。
-
-    Args:
-        fault_type: 故障数据集类型
-        keyword: 搜索关键词(可选)
-
-    Returns:
-        JSON格式的错误模式汇总
-    """
+    """\brief 在所有服务中搜索错误模式，用于全局日志扫描
+    \param fault_type 故障数据集类型
+    \param keyword 搜索关键词(可选)
+    \return JSON格式的错误模式汇总，包含 total_error_patterns 和 patterns 列表"""
     try:
         df = load_fault_data(fault_type)
     except ValueError as e:
@@ -280,7 +275,11 @@ os.makedirs(LOG_SAVE_DIR, exist_ok=True)
 
 
 def _save_logs_to_file(service: str, fault_type: str, logs: list[dict]) -> str:
-    """将生成的日志保存为 JSON 文件，返回文件路径。"""
+    """\brief 将生成的日志保存为 JSON 文件
+    \param service 服务名称
+    \param fault_type 故障类型
+    \param logs 日志列表
+    \return 保存的文件路径，失败返回空字符串"""
     ts = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
     rand = hashlib.md5(str(random.random()).encode()).hexdigest()[:8]
     filename = f"{service}_{fault_type}_{ts}_{rand}.json"
@@ -302,7 +301,10 @@ def _save_logs_to_file(service: str, fault_type: str, logs: list[dict]) -> str:
 
 
 def _load_latest_saved_logs(service: str, fault_type: str) -> tuple[list[dict], str] | tuple[None, None]:
-    """如果存在已保存的日志文件，返回最新文件的日志列表和文件路径；否则返回 (None, None)。"""
+    """\brief 加载指定服务的最新已保存日志文件
+    \param service 服务名称
+    \param fault_type 故障类型
+    \return 元组 (日志列表, 文件路径)，若不存在则返回 (None, None)"""
     pattern = os.path.join(LOG_SAVE_DIR, f"{service}_{fault_type}_*.json")
     files = glob.glob(pattern)
     if not files:

@@ -16,7 +16,9 @@ from utils.anomaly_detection import (
 
 
 def _get_data(fault_type: str) -> pd.DataFrame:
-    """获取数据：优先实时缓存，回退经验库 CSV（由 data_loader 统一管理）"""
+    """\brief 获取指标数据（实时缓存优先，CSV 回退）
+    \param fault_type 故障类型
+    \return 指标数据 DataFrame"""
     return load_fault_data(fault_type)
 
 
@@ -26,17 +28,13 @@ def query_service_metrics(
     service_name: str,
     metric_type: str = "all",
 ) -> str:
-    """
-    查询指定服务的监控指标数据并进行异常检测。
-
-    Args:
-        fault_type: 故障数据集类型 (cpu/delay/disk/loss/mem)
-        service_name: 服务名称 (如 cartservice, frontend)
-        metric_type: 指标类型 (cpu/mem/latency/load/error/all)
-
-    Returns:
-        JSON格式的指标数据与异常分析结果
-    """
+    """\brief 查询指定服务的监控指标数据并进行异常检测
+    \param fault_type 故障数据集类型 (cpu/delay/disk/loss/mem)
+    \param service_name 服务名称 (如 cartservice, frontend)
+    \param metric_type 指标类型过滤 (cpu/mem/latency/load/error/all)
+    \return JSON 字符串，包含:
+        - metrics 列表，每项含统计信息、异常标记、采样值
+        - 或错误信息（当服务/指标不存在时）"""
     try:
         df = _get_data(fault_type)
     except ValueError as e:
@@ -105,15 +103,11 @@ def query_service_metrics(
 
 @tool
 def query_all_services_overview(fault_type: str) -> str:
-    """
-    查询所有服务的指标概览，用于全局扫描发现异常服务。
-
-    Args:
-        fault_type: 故障数据集类型 (cpu/delay/disk/loss/mem)
-
-    Returns:
-        JSON格式的全服务异常概览
-    """
+    """\brief 查询所有服务的指标概览，全局扫描发现异常服务
+    \param fault_type 故障数据集类型 (cpu/delay/disk/loss/mem)
+    \return JSON 字符串，包含:
+        - services 列表，每项含异常指标数、异常列表（按分数排序）
+        - total_services 服务总数"""
     try:
         df = _get_data(fault_type)
     except ValueError as e:
@@ -161,17 +155,11 @@ def query_metric_correlation(
     target_metric: str,
     threshold: float = 0.7,
 ) -> str:
-    """
-    查询与目标指标高度相关的其他指标，用于故障传播链分析。
-
-    Args:
-        fault_type: 故障数据集类型
-        target_metric: 目标指标列名 (如 cartservice_cpu)
-        threshold: 相关性阈值 (0-1)
-
-    Returns:
-        JSON格式的相关指标列表
-    """
+    """\brief 查询与目标指标高度相关的其他指标（用于故障传播链分析）
+    \param fault_type 故障数据集类型
+    \param target_metric 目标指标列名（如 cartservice_cpu）
+    \param threshold 相关性阈值 [0-1]
+    \return JSON 字符串，包含 correlated_metrics 列表（含 correlation、direction）"""
     try:
         df = _get_data(fault_type)
     except ValueError as e:

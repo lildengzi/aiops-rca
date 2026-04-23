@@ -13,10 +13,17 @@ def detect_anomalies_zscore(
     series: pd.Series,
     threshold: float = None,
 ) -> dict:
-    """
-    基于 Z-Score 的异常检测
-    返回: {is_anomalous, anomaly_score, anomaly_indices, stats}
-    """
+    """\brief 基于 Z-Score 的时序数据异常检测
+    \details 计算每个数据点与均值的偏离标准差倍数，超过阈值的点标记为异常。
+    异常分数 = max_z_score / threshold，最大为 1.0。
+    \param series 时序数据序列（Pandas Series）
+    \param threshold Z-Score 阈值，默认从配置读取
+    \return 字典包含:
+        - is_anomalous: 是否存在异常
+        - anomaly_score: 整体异常分数 [0,1]
+        - anomaly_indices: 异常点索引列表
+        - anomaly_ratio: 异常点比例
+        - stats: 统计信息（均值、标准差、最值、最大Z分数）"""
     if threshold is None:
         threshold = ANOMALY_CONFIG["z_score_threshold"]
 
@@ -57,10 +64,19 @@ def detect_anomalies_sliding_window(
     window_size: int = None,
     threshold: float = None,
 ) -> dict:
-    """
-    基于滑动窗口的异常检测
-    对比当前窗口与历史基线的偏离
-    """
+    """\brief 基于滑动窗口的异常检测
+    \details 将序列分为前半基线、后半近期窗口，比较两部分的均值偏离。
+    适用于检测趋势性漂移或突变。
+    \param series 时序数据序列
+    \param window_size 窗口大小（默认从配置读取，实际以 half-length 为准）
+    \param threshold Z-Score 阈值
+    \return 字典包含:
+        - is_anomalous
+        - anomaly_score
+        - anomaly_indices
+        - baseline_mean: 基线均值
+        - recent_mean: 近期均值
+        - deviation: 偏离度"""
     if window_size is None:
         window_size = ANOMALY_CONFIG["window_size"]
     if threshold is None:
@@ -97,10 +113,15 @@ def detect_anomalies_sliding_window(
 
 
 def detect_change_point(series: pd.Series) -> dict:
-    """
-    变化点检测 - 找到时序数据中的突变点
-    使用 CUSUM (Cumulative Sum) 方法
-    """
+    """\brief CUSUM 变化点检测
+    \details 使用累积和（CUSUM）方法检测时序数据的突变点。
+    分别计算正向和负向累积和，取最大偏离点作为候选变化点。
+    \param series 时序数据序列
+    \return 字典包含:
+        - has_change_point: 是否存在显著变化点
+        - change_point_index: 变化点索引
+        - cusum_max: 正向 CUSUM 最大值
+        - cusum_min: 负向 CUSUM 最小值"""
     clean = series.dropna().values
     if len(clean) < 20:
         return {"has_change_point": False, "change_point_index": -1}
@@ -126,7 +147,10 @@ def detect_change_point(series: pd.Series) -> dict:
 
 
 def compute_correlation_matrix(df: pd.DataFrame, columns: list[str] = None) -> pd.DataFrame:
-    """计算指标间的相关性矩阵"""
+    """\brief 计算指定指标列间的 Pearson 相关系数矩阵
+    \param df 指标数据 DataFrame
+    \param columns 需要分析的列名列表（None 表示所有数值列）
+    \return 相关系数矩阵 DataFrame"""
     if columns:
         df = df[columns]
     return df.corr()
@@ -137,10 +161,13 @@ def find_correlated_metrics(
     target_col: str,
     threshold: float = None,
 ) -> list[dict]:
-    """
-    找到与目标指标高相关的其他指标
-    用于故障传播链分析
-    """
+    """\brief 找出与目标指标高度相关的其他指标
+    \details 计算目标列与所有数值列的 Pearson 相关系数，
+    返回绝对值超过阈值的指标列表，用于故障传播分析。
+    \param df 指标数据 DataFrame
+    \param target_col 目标指标列名
+    \param threshold 相关性阈值 (0-1)，默认从配置读取
+    \return 相关指标列表，每项含 metric、correlation、direction"""
     if threshold is None:
         threshold = ANOMALY_CONFIG["correlation_threshold"]
 
@@ -165,10 +192,10 @@ def find_correlated_metrics(
 
 
 def rank_root_causes(anomaly_results: dict) -> list[dict]:
-    """
-    根据异常检测结果对可能的根因进行排序
-    采用 BARO 思路：基于异常分数进行排序
-    """
+    """\brief 根据异常检测结果对可能的根因进行排序
+    \details 采用 BARO（基于异常分数）思路，按 anomaly_score 降序排列。
+    \param anomaly_results 异常检测结果字典 {metric_name: result_dict}
+    \return 排序后的根因列表，每项含 metric、anomaly_score、stats"""
     ranked = []
     for metric_name, result in anomaly_results.items():
         if result.get("is_anomalous"):

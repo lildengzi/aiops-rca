@@ -12,6 +12,10 @@ from config import SERVICE_TOPOLOGY
 
 
 def _gen_id(seed: str, length: int = 16) -> str:
+    """\brief 根据种子生成固定长度的 MD5 哈希 ID
+    \param seed 随机种子字符串
+    \param length 截取长度（默认 16）
+    \return 十六进制 ID 字符串"""
     return hashlib.md5(seed.encode()).hexdigest()[:length]
 
 
@@ -21,7 +25,12 @@ def _build_trace(
     anomalous_services: list[dict],
     base_ts: int,
 ) -> dict:
-    """根据拓扑关系和异常服务构建一条模拟调用链"""
+    """\brief 根据拓扑关系和异常服务构建一条模拟调用链
+    \param entry_service 入口服务名
+    \param fault_type 故障类型
+    \param anomalous_services 异常服务列表（含 anomaly_score）
+    \param base_ts 基础时间戳
+    \return 调用链字典，包含 trace_id 和 spans 列表"""
     trace_id = _gen_id(f"{entry_service}-{base_ts}-{random.random()}", 32)
     spans = []
     span_idx = 0
@@ -108,18 +117,12 @@ def query_service_traces(
     include_errors_only: bool = True,
     max_traces: int = 3,
 ) -> str:
-    """
-    查询指定服务的调用链数据，分析故障传播路径。
-
-    Args:
-        fault_type: 故障数据集类型 (cpu/delay/disk/loss/mem)
-        service_name: 要分析的服务名称
-        include_errors_only: 是否仅返回包含错误的 Trace
-        max_traces: 最大返回 Trace 数量
-
-    Returns:
-        JSON格式的调用链数据
-    """
+    """\brief 查询指定服务的调用链数据，分析故障传播路径
+    \param fault_type 故障数据集类型 (cpu/delay/disk/loss/mem)
+    \param service_name 要分析的服务名称
+    \param include_errors_only 是否仅返回包含错误的 Trace
+    \param max_traces 最大返回 Trace 数量
+    \return JSON 格式的调用链数据，包含 summary 和 traces"""
     try:
         df = load_fault_data(fault_type)
     except ValueError as e:
@@ -180,15 +183,11 @@ def query_service_traces(
 
 @tool
 def analyze_call_chain(fault_type: str) -> str:
-    """
-    分析完整的服务调用链，识别故障传播路径。
-
-    Args:
-        fault_type: 故障数据集类型
-
-    Returns:
-        JSON格式的调用链分析结果，包含故障传播路径
-    """
+    """\brief 分析完整的服务调用链，识别故障传播路径
+    \param fault_type 故障数据集类型
+    \return JSON 格式的调用链分析结果，包含:
+        - service_health: 各服务健康度及异常指标
+        - fault_propagation: 故障传播链（按异常分数排序）"""
     try:
         df = load_fault_data(fault_type)
     except ValueError as e:

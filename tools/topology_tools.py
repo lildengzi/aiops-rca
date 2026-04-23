@@ -9,15 +9,14 @@ from config import SERVICE_TOPOLOGY
 
 @tool
 def lookup_service_topology(service_name: str) -> str:
-    """
-    查询指定服务的拓扑信息，包括依赖关系和服务描述。
-
-    Args:
-        service_name: 服务名称
-
-    Returns:
-        JSON格式的服务拓扑信息
-    """
+    """\brief 查询指定服务的拓扑信息（依赖关系与服务描述）
+    \param service_name 服务名称
+    \return JSON 字符串，包含:
+        - description: 服务描述
+        - type: 服务类型
+        - dependencies: 下游依赖服务列表
+        - upstream_services: 上游调用方列表
+        - 或错误信息（当服务不在 CMDB 时）"""
     if service_name not in SERVICE_TOPOLOGY:
         return json.dumps({
             "status": "failure",
@@ -44,13 +43,9 @@ def lookup_service_topology(service_name: str) -> str:
 
 @tool
 def get_full_topology() -> str:
-    """
-    获取完整的系统架构拓扑，包括所有服务及其依赖关系。
-    用于整体架构理解和故障传播路径分析。
-
-    Returns:
-        JSON格式的完整系统拓扑
-    """
+    """\brief 获取完整的系统架构拓扑（所有服务及其依赖关系）
+    \details 用于整体架构理解和故障传播路径分析
+    \return JSON 字符串，包含 total_services 和 topology 列表"""
     topology = []
     for svc, info in SERVICE_TOPOLOGY.items():
         upstream = [s for s, d in SERVICE_TOPOLOGY.items()
@@ -71,16 +66,13 @@ def get_full_topology() -> str:
 
 @tool
 def find_dependency_path(source: str, target: str) -> str:
-    """
-    查找两个服务之间的依赖路径（BFS）。
-
-    Args:
-        source: 起始服务
-        target: 目标服务
-
-    Returns:
-        JSON格式的依赖路径
-    """
+    """\brief 查找两个服务之间的依赖路径（广度优先搜索 BFS）
+    \param source 起始服务名
+    \param target 目标服务名
+    \return JSON 字符串，包含:
+        - path: 依赖路径列表（服务名序列）
+        - path_length: 路径长度
+        - message: 未找到路径时的提示信息"""
     if source not in SERVICE_TOPOLOGY or target not in SERVICE_TOPOLOGY:
         return json.dumps({
             "status": "failure",

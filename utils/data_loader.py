@@ -13,21 +13,24 @@ _realtime_cache: dict[str, pd.DataFrame] = {}
 
 
 def set_realtime_data(fault_type: str, df: pd.DataFrame) -> None:
-    """写入实时数据缓存（由 RCAAdapter.inject_into_tools() 调用）"""
+    """\brief 写入实时数据缓存（由 RCAAdapter.inject_into_tools() 调用）
+    \param fault_type 故障类型
+    \param df 包含时序指标的 Pandas DataFrame"""
     _realtime_cache[fault_type] = df
 
 
 def get_realtime_data(fault_type: str) -> Optional[pd.DataFrame]:
-    """读取实时数据缓存"""
+    """\brief 读取实时数据缓存
+    \param fault_type 故障类型
+    \return 缓存的 DataFrame，不存在则返回 None"""
     return _realtime_cache.get(fault_type)
 
 
 def load_fault_data(fault_type: str) -> pd.DataFrame:
-    """
-    加载指定故障类型的数据。
-    优先使用实时注入的数据；
-    若无实时数据，则回退到经验库 CSV。
-    """
+    """\brief 加载指定故障类型的数据（优先级：实时缓存 > CSV 文件）
+    \param fault_type 故障类型 (cpu/delay/disk/loss/mem)
+    \return 包含该故障类型指标的 Pandas DataFrame
+    \throw ValueError 当 fault_type 不存在时"""
     # 优先：实时数据缓存
     if fault_type in _realtime_cache and not _realtime_cache[fault_type].empty:
         return _realtime_cache[fault_type]
@@ -44,10 +47,9 @@ def load_fault_data(fault_type: str) -> pd.DataFrame:
 
 
 def parse_columns(df: pd.DataFrame) -> dict:
-    """
-    解析 DataFrame 列名，按服务和指标类型分组。
-    返回: {service_name: {metric_type: [column_names]}}
-    """
+    """\brief 解析 DataFrame 列名，按服务和指标类型分组
+    \param df 包含时序指标数据的 DataFrame
+    \return 嵌套字典 {service_name: {metric_type: [column_names]}}"""
     result = {}
     for col in df.columns:
         if col == "time":
@@ -76,7 +78,10 @@ def parse_columns(df: pd.DataFrame) -> dict:
 
 
 def _classify_metric(suffix: str, full_col: str) -> str:
-    """对指标后缀进行分类"""
+    """\brief 对指标后缀进行分类
+    \param suffix 指标后缀
+    \param full_col 完整列名
+    \return 指标类型: resource_cpu/resource_mem/performance/traffic/error/other"""
     suffix_lower = suffix.lower()
     if suffix_lower in ("cpu",):
         return "resource_cpu"
@@ -98,7 +103,12 @@ def get_service_metrics(
     start_time: Optional[int] = None,
     end_time: Optional[int] = None,
 ) -> pd.DataFrame:
-    """获取指定服务在指定时间范围内的所有指标"""
+    """\brief 获取指定服务在指定时间范围内的所有指标
+    \param df 指标数据 DataFrame
+    \param service 目标服务名
+    \param start_time 起始时间戳（可选）
+    \param end_time 结束时间戳（可选）
+    \return 筛选后的服务指标子集 DataFrame"""
     cols = ["time"] + [c for c in df.columns if c.startswith(f"{service}_")]
     sub = df[cols].copy()
     if start_time is not None:
@@ -109,7 +119,9 @@ def get_service_metrics(
 
 
 def get_all_services(df: pd.DataFrame) -> list[str]:
-    """提取数据中所有服务名"""
+    """\brief 从 DataFrame 列名中提取所有服务名
+    \param df 指标数据 DataFrame
+    \return 排序后的服务名列表"""
     services = set()
     for col in df.columns:
         if col == "time":
