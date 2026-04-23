@@ -64,6 +64,8 @@ This system implements a multi-agent collaborative AI system that simulates expe
 
 ## 3. Project Structure
 
+> Supplement for the current repository state: besides the core modules below, the project now also includes `benchmark.py`, `quick_test.py`, `defense_demo.py`, `data_stats.py`, `benchmark_results/`, `feedback/`, and `think_log/` for experiments, demos, statistics, user feedback, and full reasoning logs.
+
 ```
 aiops-rca/
 ├── main.py                    # CLI entry point (requires LLM API Key)
@@ -173,6 +175,12 @@ python main.py --query "frontend service delay increase, analyze root cause"
 # Explicitly specify fault type
 python main.py --fault cpu --query "frontend service CPU spike"
 
+# Limit the number of reasoning iterations
+python main.py --query "system reports OOM alert" --max-iter 3
+
+# Disable full-analysis mode and focus on the target service only
+python main.py --query "frontend latency spike" --disable-full-analysis
+
 # Interactive mode
 python main.py --interactive
 ```
@@ -193,7 +201,43 @@ System supports two modes:
 1. **Auto Detection (Default)**: Input any alert, system automatically scans 5 datasets to determine fault type
 2. **Manual Mode**: Use `--fault` parameter to specify (cpu/delay/disk/loss/mem)
 
-## 5. UI Pages
+## 5. Runtime Outputs and Auxiliary Scripts
+
+### 5.1 Generated Outputs
+
+After CLI or Web analysis runs, the system will create the following directories automatically when needed:
+
+| Path | Description |
+|------|-------------|
+| `reports/` | Final RCA reports in Markdown format |
+| `think_log/` | Full agent reasoning / workflow logs |
+| `feedback/` | User feedback records from the Streamlit page |
+| `benchmark_results/` | Saved benchmark comparison results |
+
+### 5.2 Auxiliary Scripts
+
+| Script | Description |
+|--------|-------------|
+| `quick_test.py` | Quick validation of all built-in fault datasets without LLM API |
+| `demo_offline.py` | Full offline anomaly-analysis demo |
+| `benchmark.py` | Comparison with traditional SRE/statistical methods |
+| `defense_demo.py` | Defense / presentation-oriented demo output |
+| `data_stats.py` | Generate dashboard-oriented mock trend and fault statistics |
+| `build_knowledge_base.py` | Build or refresh the fault knowledge base |
+
+### 5.3 Current Web UI Pages
+
+The Streamlit app currently exposes these pages through the sidebar:
+
+- **Fault Trend**: trend monitoring and high-frequency fault statistics
+- **Fault Analysis**: text / voice / image input for RCA
+- **History**: browse and download generated reports
+- **Knowledge Base**: inspect knowledge-base related content
+- **Feedback**: collect diagnosis feedback for later improvement
+
+> Note: in the current implementation, fault auto-detection is handled inside the workflow node `detect_fault_node`, while `main.py` keeps a compatibility placeholder function.
+
+## 6. UI Pages
 
 System contains 5 main pages via sidebar:
 
@@ -205,7 +249,7 @@ System contains 5 main pages via sidebar:
 | Knowledge Base | Fault knowledge and RAG management |
 | Feedback | User feedback management |
 
-## 6. Agent Design
+## 7. Agent Design
 
 ### 6.1 Master Agent
 - **Role**: SRE Expert / Commander
@@ -231,7 +275,7 @@ System contains 5 main pages via sidebar:
 ### 6.6 Reporter Agent
 - **Output**: Structured event analysis report
 
-## 7. Core Technologies
+## 8. Core Technologies
 
 ### 7.1 ReAct Pattern
 Alternating reasoning and action for iterative convergence:
@@ -259,7 +303,7 @@ Rebuild index:
 python build_knowledge_base.py
 ```
 
-## 8. Dataset Description
+## 9. Dataset Description
 
 RCAEval benchmark dataset (RE1 subset), Online Boutique microservice system:
 
@@ -281,7 +325,7 @@ Each dataset contains 12+ microservices with CPU, memory, latency, load, error r
 4. Determine most likely fault type based on characteristics
 5. Use detected fault type for subsequent deep analysis
 
-## 9. Configuration
+## 10. Configuration
 
 Adjust in `config.py`:
 
@@ -291,7 +335,7 @@ Adjust in `config.py`:
 | max_iterations | ReAct max iterations | 5 |
 | convergence_threshold | Analyst stop decision threshold | 0.8 |
 
-## 10. Data Integration API (utils/)
+## 11. Data Integration API (utils/)
 
 The `utils/data_loader.py` module provides the API for accessing real operational data.
 
@@ -315,7 +359,7 @@ set_realtime_data("cpu", df)
 df = load_fault_data("cpu")
 ```
 
-## 11. Environment Variables
+## 12. Environment Variables
 
 Create `.env` file:
 ```

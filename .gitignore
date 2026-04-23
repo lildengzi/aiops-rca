@@ -26,6 +26,8 @@ reports/
 !README.md
 !README_zh.md
 data/real_data/
+feedback/
+think_log/
 
 # OS
 .DS_Store

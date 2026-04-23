@@ -14,23 +14,24 @@ from workflow.state import RCAState
 
 def analyst_node(state: RCAState) -> dict:
     """
-    值班长节点：整合证据、推理判断、决定是否继续
-    集成知识库进行根因匹配和模式识别
+    值班长节点：整合证据、推理判断、决定是否继续。
+    集成知识库进行根因匹配和模式识别，并优先使用自动检测出的故障类型。
     """
     llm = _create_llm()
     ts = datetime.now().strftime("%H:%M:%S")
+    effective_fault_type = state.get("detected_fault_type") or state.get("fault_type", "unknown")
     
     # 知识库增强：获取已知故障模式
     km = get_knowledge_manager()
-    fault_pattern = km.get_fault_pattern(state['fault_type'])
-    recommended_roots = km.recommend_root_causes(state['fault_type'])
-    propagation_path = km.get_propagation_path(state['fault_type'])
-    mitigations = km.recommend_mitigations(state['fault_type'])
+    fault_pattern = km.get_fault_pattern(effective_fault_type)
+    recommended_roots = km.recommend_root_causes(effective_fault_type)
+    propagation_path = km.get_propagation_path(effective_fault_type)
+    mitigations = km.recommend_mitigations(effective_fault_type)
 
     # 汇总所有证据 + 知识库增强信息
     evidence = f"""=== 第 {state['iteration']} 轮分析证据汇总 ===
 
-【故障类型】{state['fault_type']}
+【故障类型】{effective_fault_type}
 【用户问题】{state['user_query']}
 
 【知识库参考信息】
@@ -85,8 +86,9 @@ def analyst_node(state: RCAState) -> dict:
     if state["iteration"] >= state["max_iterations"]:
         should_stop = True
 
-    log_entry = f"[{ts}] 值班长决策: stop={should_stop}, 详情: {decision_text[:300]}..."
-
+    # 生成thinking_log
+    log_entry = f"[{ts}] 值班长决策: stop={should_stop}, fault_type={effective_fault_type}\n{decision_text}"
+    
     return {
         "analyst_decision": decision_text,
         "should_stop": should_stop,

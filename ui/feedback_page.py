@@ -3,6 +3,7 @@ import os
 import json
 import glob
 from datetime import datetime
+from pathlib import Path
 
 
 FEEDBACK_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "feedback")
@@ -13,9 +14,15 @@ def _ensure_feedback_dir():
         os.makedirs(FEEDBACK_DIR)
 
 
+def _sanitize_fault_id(fault_id):
+    """Convert fault_id to a safe file name while keeping it readable."""
+    return str(fault_id).replace("/", "_").replace("\\", "_").strip()
+
+
 def _get_feedback_file(fault_id):
     _ensure_feedback_dir()
-    return os.path.join(FEEDBACK_DIR, f"{fault_id}.json")
+    safe_fault_id = _sanitize_fault_id(fault_id)
+    return os.path.join(FEEDBACK_DIR, f"{safe_fault_id}.json")
 
 
 def save_feedback(fault_id, original_diagnosis, user_correction, feedback_type, comment):
@@ -54,9 +61,12 @@ def load_all_feedback():
     _ensure_feedback_dir()
     feedbacks = []
     
-    for f in glob.glob(os.path.join(FEEDBACK_DIR, "*.json")):
-        with open(f, "r", encoding="utf-8") as fp:
-            feedbacks.append(json.load(fp))
+    for feedback_path in Path(FEEDBACK_DIR).glob("*.json"):
+        try:
+            with open(feedback_path, "r", encoding="utf-8") as fp:
+                feedbacks.append(json.load(fp))
+        except (json.JSONDecodeError, OSError):
+            continue
     
     feedbacks.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
     return feedbacks
@@ -72,33 +82,53 @@ def render_feedback_widget(fault_id, original_diagnosis):
     
     existing = load_feedback(fault_id)
     if existing:
-        st.success(f"You have submitted feedback: [{existing['feedback_type']}] {existing.get('comment', '')}")
+        submitted_comment = existing.get("comment", "").strip()
+        success_message = f"You have submitted feedback: [{existing['feedback_type']}]"
+        if submitted_comment:
+            success_message += f" {submitted_comment}"
+        st.success(success_message)
         return None
     
     st.info("Please evaluate and provide feedback on this diagnosis")
     
     safe_id = str(fault_id)[:50].replace("/", "_").replace("-", "_")
+    label_map = {
+        "correct": "Correct",
+        "incorrect": "Incorrect",
+        "partial": "Partial",
+        "missing": "Missing Info",
+    }
+
+    with st.form(key=f"fb_form_{safe_id}", clear_on_submit=True):
+        feedback_type = st.selectbox(
+            "Feedback Type",
+            ["correct", "incorrect", "partial", "missing"],
+            format_func=lambda x: label_map.get(x, x),
+            key=f"fb_type_{safe_id}"
+        )
+        
+        correction = st.text_area(
+            "Correct/Add diagnosis",
+            placeholder="If diagnosis is incorrect, please provide the correct diagnosis...",
+            key=f"fb_corr_{safe_id}"
+        )
+        
+        comment = st.text_area(
+            "Comment (optional)",
+            placeholder="Other suggestions...",
+            key=f"fb_note_{safe_id}"
+        )
+
+        submit_feedback = st.form_submit_button("Submit Feedback", use_container_width=True)
     
-    feedback_type = st.selectbox(
-        "Feedback Type",
-        ["correct", "incorrect", "partial", "missing"],
-        format_func=lambda x: {"correct": "Correct", "incorrect": "Incorrect", "partial": "Partial", "missing": "Missing Info"}.get(x, x),
-        key=f"fb_type_{safe_id}"
-    )
-    
-    correction = st.text_area(
-        "Correct/Add diagnosis",
-        placeholder="If diagnosis is incorrect, please provide the correct diagnosis...",
-        key=f"fb_corr_{safe_id}"
-    )
-    
-    comment = st.text_area(
-        "Comment (optional)",
-        placeholder="Other suggestions...",
-        key=f"fb_note_{safe_id}"
-    )
-    
-    if st.button("Submit Feedback", key=f"fb_submit_{safe_id}"):
+    if submit_feedback:
+        correction = correction.strip()
+        comment = comment.strip()
+
+        if feedback_type in {"incorrect", "partial", "missing"} and not correction:
+            st.warning("Please provide the corrected or additional diagnosis before submitting.")
+            return None
+
         save_feedback(fault_id, original_diagnosis, correction, feedback_type, comment)
         st.success("Feedback submitted! Thank you for helping improve the model.")
         st.rerun()
@@ -123,10 +153,12 @@ def render_feedback_page():
             col1, col2 = st.columns(2)
             with col1:
                 st.markdown("**Original Diagnosis**")
-                st.text(fb.get("original_diagnosis", "")[:200] + "...")
+                original_diagnosis = fb.get("original_diagnosis", "")
+                st.text(original_diagnosis[:200] + ("..." if len(original_diagnosis) > 200 else ""))
             with col2:
                 st.markdown("**User Correction**")
-                st.text(fb.get("user_correction", "")[:200] + "...")
+                user_correction = fb.get("user_correction", "")
+                st.text(user_correction[:200] + ("..." if len(user_correction) > 200 else ""))
             
             st.markdown(f"**Comment**: {fb.get('comment', 'None')}")
             st.markdown(f"**Status**: {fb.get('status', 'pending')}")

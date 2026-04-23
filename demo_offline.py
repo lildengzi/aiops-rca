@@ -1,5 +1,5 @@
 """
-离线演示脚本
+离线演示脚本（测试无知识库下整个工作流能否跑通）
 """
 import sys
 import os
@@ -243,7 +243,15 @@ def main():
 ╚══════════════════════════════════════════════════════════════╝
 """)
 
-    target_fault_type = "cpu"
+    supported_fault_types = list(FAULT_DATA_MAP.keys())
+    target_fault_type = (sys.argv[1].strip().lower() if len(sys.argv) > 1 else "cpu")
+
+    if target_fault_type not in supported_fault_types:
+        print(f"[警告] 不支持的故障类型: {target_fault_type}")
+        print(f"[提示] 可选值: {', '.join(supported_fault_types)}")
+        print("[提示] 将回退为 cpu 场景继续演示")
+        target_fault_type = "cpu"
+
     try:
         analyze_fault_scenario(target_fault_type)
     except Exception as e:

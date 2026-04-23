@@ -29,6 +29,7 @@ def aggregate_node(state: RCAState) -> dict:
     else:
         status.append("链路分析: 未执行/失败")
     
+    # 生成thinking_log
     log_entry = f"[{ts}] 并行任务汇总完成 - {'; '.join(status)}"
     
     return {

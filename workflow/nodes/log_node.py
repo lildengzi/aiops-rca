@@ -65,12 +65,15 @@ def log_node(state: RCAState) -> dict:
         final_msg = result["messages"][-1].content if result["messages"] else "日志分析未返回结果"
 
         log_entry = f"[{ts}] 日志分析完成: {final_msg[:300]}..."
+        # 生成thinking_log
+        log_entry = f"[{ts}] 日志分析完成:\n{final_msg}"
+        
         return {
             "log_results": [final_msg],
             "thinking_log": [log_entry],
         }
     except Exception as e:
-        log_entry = f"[{ts}] 日志分析异常: {str(e)[:100]}"
+        log_entry = f"[{ts}] 日志分析异常: {str(e)}"
         return {
             "log_results": [f"日志分析执行异常: {str(e)}"],
             "thinking_log": [log_entry],

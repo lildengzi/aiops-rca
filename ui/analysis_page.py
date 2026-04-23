@@ -6,13 +6,15 @@ import glob
 import time
 
 
-AGENT_ORDER = ["运维专家", "指标分析专家", "日志分析专家", "链路分析专家", "数据汇总", "值班长", "运营专家"]
+AGENT_ORDER = ["故障类型检测", "运维专家", "指标分析专家", "日志分析专家", "链路分析专家", "数据汇总", "值班长", "运营专家"]
 
 
 def render_analysis_page(config):
     """渲染故障分析页面"""
     if "messages" not in st.session_state:
         st.session_state.messages = []
+    if "latest_report_context" not in st.session_state:
+        st.session_state.latest_report_context = None
 
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
@@ -39,6 +41,21 @@ def render_analysis_page(config):
 
     if prompt:
         _run_analysis(prompt, config)
+    elif st.session_state.latest_report_context:
+        _render_persisted_feedback_widget()
+
+
+def _render_persisted_feedback_widget():
+    """在 Streamlit 重跑后继续显示当前报告对应的反馈组件。"""
+    report_context = st.session_state.get("latest_report_context")
+    if not report_context:
+        return
+
+    st.markdown("---")
+    st.caption(f"Current report: {report_context['report_name']}")
+
+    from .feedback_page import render_feedback_widget
+    render_feedback_widget(report_context["fault_id"], report_context["original_diagnosis"])
 
 
 def _run_analysis(prompt, config):
@@ -174,9 +191,14 @@ def _show_report(start_time, full_output, col_progress=None, col_logs=None):
         
         st.session_state.messages.append({"role": "assistant", "content": report_content})
         
-        st.markdown("---")
-        from .feedback_page import render_feedback_widget
         fault_id = os.path.basename(latest_report).replace(".md", "")
+        st.session_state.latest_report_context = {
+            "fault_id": fault_id,
+            "original_diagnosis": report_content[:500],
+            "report_name": os.path.basename(latest_report),
+        }
+
+        from .feedback_page import render_feedback_widget
         render_feedback_widget(fault_id, report_content[:500])
     else:
         st.error("❌ 分析执行完成但未生成报告文件")

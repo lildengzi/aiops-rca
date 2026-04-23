@@ -28,6 +28,8 @@ class RCAState(TypedDict):
     trace_results: Annotated[list[str], operator.add]    # 链路分析结果累积
     analyst_decision: str         # 值班长决策
     final_report: str             # 最终报告
-
+    
     # 过程日志
     thinking_log: Annotated[list[str], operator.add]
+
+

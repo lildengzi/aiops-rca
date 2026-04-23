@@ -68,13 +68,15 @@ def trace_node(state: RCAState) -> dict:
         result = trace_agent.invoke({"messages": [HumanMessage(content=task)]})
         final_msg = result["messages"][-1].content if result["messages"] else "链路分析未返回结果"
 
-        log_entry = f"[{ts}] 链路分析完成: {final_msg[:300]}..."
+        # 生成thinking_log
+        log_entry = f"[{ts}] 链路分析完成:\n{final_msg}"
+        
         return {
             "trace_results": [final_msg],
             "thinking_log": [log_entry],
         }
     except Exception as e:
-        log_entry = f"[{ts}] 链路分析异常: {str(e)[:100]}"
+        log_entry = f"[{ts}] 链路分析异常: {str(e)}"
         return {
             "trace_results": [f"链路分析执行异常: {str(e)}"],
             "thinking_log": [log_entry],
