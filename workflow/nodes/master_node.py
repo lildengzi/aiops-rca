@@ -23,7 +23,6 @@ def master_node(state: RCAState) -> dict:
 
     fault_type = state.get("fault_type", "unknown")
     detected_type = state.get("detected_fault_type", "")
-    effective_fault_type = detected_type or fault_type
 
     # 构建上下文
     context_parts = []
@@ -44,18 +43,17 @@ def master_node(state: RCAState) -> dict:
     # 构建用户消息
     user_msg_parts = [
         f"当前时间: {ts}",
-        f"故障类型: {effective_fault_type}",
         f"用户问题: {state['user_query']}",
         f"当前迭代轮次: {iteration + 1}/{state['max_iterations']}",
         f"当前系统并行度: {parallel_degree}",
     ]
 
     if detected_type:
-        user_msg_parts.append(f"系统已基于真实数据自动识别故障类型为: {detected_type}，请围绕该类型制定排查计划。")
+        user_msg_parts.append(f"系统基于观测数据检测到异常模式: {detected_type}（仅供参考，请结合具体证据制定排查计划）。")
     elif fault_type != "unknown":
-        user_msg_parts.append(f"用户已显式指定故障类型为: {fault_type}，请围绕该类型制定排查计划。")
+        user_msg_parts.append(f"用户指定加载的数据集标签: {fault_type}（仅供参考，请基于实际观测证据制定排查计划）。")
     else:
-        user_msg_parts.append("当前仍未可靠识别故障类型，请先做保守的全局排查规划。")
+        user_msg_parts.append("当前未预设故障类型，请根据观测数据表现制定排查计划。")
 
     user_msg = "\n".join(user_msg_parts) + "\n\n请制定本轮排查计划。"
 
@@ -65,9 +63,9 @@ def master_node(state: RCAState) -> dict:
 
     log_entry = f"[{ts}] 运维专家 - 第{iteration+1}轮计划:\n{plan}"
     if detected_type:
-        log_entry += f"\n→ 当前采用故障类型: {detected_type}"
+        log_entry += f"\n→ 检测到的异常模式: {detected_type}"
     elif fault_type != "unknown":
-        log_entry += f"\n→ 当前采用用户指定故障类型: {fault_type}"
+        log_entry += f"\n→ 用户指定数据集标签: {fault_type}"
 
     return {
         "master_plan": plan,

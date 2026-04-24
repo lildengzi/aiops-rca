@@ -16,7 +16,7 @@
 
 ### 核心特性
 
-- **智能故障类型自动检测**：用户输入任意告警信息，系统自动扫描5种数据集（CPU/延迟/磁盘/丢包/内存），分析异常指标特征后自动识别故障类型，无需手动指定
+- **异常检测与根因分析**：用户输入任意告警信息，系统自动扫描监控样本数据集，结合指标、日志、链路等证据识别异常模式并分析根因候选
 - **多智能体协作**：6 个专业智能体各司其职，协同完成复杂故障诊断
 - **ReAct 模式**：交替执行"推理"与"行动"，迭代收敛至高置信度根因
 - **工具化数据接入**：将指标、日志、链路追踪、CMDB 封装为可调用工具（模拟 MCP 服务）
@@ -64,13 +64,12 @@
 
 ## 三、项目结构
 
-> 根据当前仓库状态补充说明：除下面的核心模块外，项目目前还包含 `benchmark.py`、`quick_test.py`、`defense_demo.py`、`data_stats.py`、`benchmark_results/`、`feedback/`、`think_log/` 等内容，分别用于对比实验、快速验证、答辩演示、统计数据生成、用户反馈以及完整推理日志保存。
+> 根据当前仓库状态补充说明：除下面的核心模块外，项目目前还包含 `benchmark.py`、`defense_demo.py`、`benchmark_results/`、`feedback/`、`think_log/` 等内容，分别用于对比实验、答辩演示、用户反馈以及完整推理日志保存。
 
 ```
 
 aiops-rca/
 ├── main.py                    # CLI入口（需要LLM API Key）
-├── demo_offline.py            # 离线演示（无需API Key）
 ├── app.py                     # Streamlit Web界面入口
 ├── config.py                  # 系统配置
 ├── build_knowledge_base.py    # 知识库构建工具
@@ -89,8 +88,7 @@ aiops-rca/
 │   ├── metric_tools.py        # 指标查询工具
 │   ├── log_tools.py           # 日志查询工具
 │   ├── trace_tools.py         # 链路追踪工具
-│   ├── topology_tools.py      # CMDB/拓扑工具
-│   └── extract_reports_logs.py # 报告日志提取
+│   └── topology_tools.py      # CMDB/拓扑工具
 ├── workflow/                   # 工作流编排
 │   ├── __init__.py
 │   ├── orchestrator.py        # LangGraph工作流入口
@@ -99,13 +97,14 @@ aiops-rca/
 │   ├── utils.py               # 工作流工具函数
 │   └── nodes/                 # 工作流节点
 │       ├── __init__.py
+│       ├── detect_fault_node.py  # 故障类型检测节点
 │       ├── master_node.py     # 运维专家节点
-│       ├── metric_node.py    # 指标分析节点
-│       ├── log_node.py       # 日志分析节点
-│       ├── trace_node.py     # 链路分析节点
-│       ├── analyst_node.py   # 值班长节点
-│       ├── reporter_node.py  # 报告生成节点
-│       └── aggregate_node.py # 证据聚合节点
+│       ├── metric_node.py     # 指标分析节点
+│       ├── log_node.py        # 日志分析节点
+│       ├── trace_node.py      # 链路分析节点
+│       ├── analyst_node.py    # 值班长节点
+│       ├── reporter_node.py   # 报告生成节点
+│       └── aggregate_node.py  # 证据聚合节点
 ├── ui/                        # Web界面组件
 │   ├── __init__.py
 │   ├── sidebar.py             # 侧边栏导航
@@ -120,24 +119,31 @@ aiops-rca/
 │   ├── __init__.py
 │   ├── voice.py               # 语音识别后端
 │   └── image.py               # 图像分析后端
+├── cli/                       # CLI组件
+│   ├── __init__.py
+│   ├── runner.py              # CLI运行器
+│   ├── display.py             # 显示工具
+│   └── reporting.py           # 报告生成
 ├── utils/                     # 工具库
 │   ├── __init__.py
 │   ├── data_loader.py         # 数据加载
-│   └── anomaly_detection.py   # 异常检测算法
+│   ├── anomaly_detection.py   # 异常检测算法
+│   ├── csv_processor.py        # CSV验证和处理
+│   └── service_parser.py       # 服务名/指标提取
 ├── data/                      # 测试数据
-│   ├── data1.csv             # CPU故障数据
-│   ├── data2.csv             # 延迟故障数据
-│   ├── data3.csv             # 磁盘故障数据
-│   ├── data4.csv             # 丢包故障数据
-│   ├── data5.csv             # 内存故障数据
-│   └── real_data/            # 真实场景数据
+│   ├── data1.csv             # 监控样本数据
+│   ├── data2.csv             # 监控样本数据
+│   ├── data3.csv             # 监控样本数据
+│   ├── data4.csv             # 监控样本数据
+│   └── data5.csv             # 监控样本数据
 ├── knowledge_base/            # 知识库
 │   ├── __init__.py
 │   ├── rca_knowledge.md       # RCA专家知识
 │   ├── knowledge_manager.py  # 知识库管理器
 │   ├── rag_index.py           # RAG索引构建
 │   ├── data_analyzer.py       # 数据分析工具
-│   ├── fault_patterns.py     # 故障模式库
+│   ├── fault_patterns.py     # 异常模式参考库
+│   ├── fault_patterns.json   # 预定义异常模式
 │   └── storage.py            # 知识库存储
 ├── logs/                      # 系统运行日志
 ├── models/                    # 模型文件
@@ -161,13 +167,7 @@ streamlit run app.py
 
 浏览器自动打开 http://localhost:8501
 
-### 4.3 离线演示
-
-```bash
-python demo_offline.py
-```
-
-### 4.4 完整多智能体运行（需要LLM API Key）
+### 4.3 完整多智能体运行（需要LLM API Key）
 
 ```bash
 # 自动检测故障类型（推荐）
@@ -186,7 +186,7 @@ python main.py --query "frontend延迟升高" --disable-full-analysis
 python main.py --interactive
 ```
 
-### 4.5 多模态输入（Web界面）
+### 4.4 多模态输入（Web界面）
 
 系统支持三种输入方式：
 
@@ -196,12 +196,12 @@ python main.py --interactive
 | 语音输入 | 点击录制按钮，支持中文/英文语音识别  |
 | 图表上传 | 上传监控图表，自动识别并生成告警描述 |
 
-### 故障类型自动检测
+### 故障分析模式
 
 系统支持两种模式：
 
-1. **自动检测模式**（默认）：输入任意告警，系统自动扫描5种数据集判断故障类型
-2. **手动指定模式**：通过 `--fault` 参数指定（cpu/delay/disk/loss/mem）
+1. **自动检测模式**（默认）：输入任意告警，系统自动扫描监控样本数据集识别异常模式
+2. **手动指定模式**：通过 `--fault` 参数指定要加载的样本数据集（cpu/delay/disk/loss/mem）
 
 ## 五、运行产物与辅助脚本
 
@@ -220,11 +220,8 @@ python main.py --interactive
 
 | 脚本                        | 说明                                  |
 | --------------------------- | ------------------------------------- |
-| `quick_test.py`           | 无需 LLM API 的内置数据集快速验证脚本 |
-| `demo_offline.py`         | 完整离线异常分析演示                  |
 | `benchmark.py`            | 与传统 SRE / 统计方法的对比实验       |
 | `defense_demo.py`         | 面向答辩展示的演示脚本                |
-| `data_stats.py`           | 生成仪表盘趋势与故障统计数据          |
 | `build_knowledge_base.py` | 构建或刷新故障知识库                  |
 
 ## 六、界面说明
@@ -241,39 +238,39 @@ python main.py --interactive
 
 ## 七、智能体设计
 
-### 6.1 运维专家 Agent（Master）
+### 7.1 运维专家 Agent（Master）
 
 - **角色**：SRE运维专家/总指挥
 - **职责**：解析告警、制定排查计划、调度下游智能体
 - **输出**：结构化排查计划（JSON格式）
 
-### 6.2 指标分析 Agent（Metric）
+### 7.2 指标分析 Agent（Metric）
 
 - **工具**：`query_service_metrics`, `query_all_services_overview`, `query_metric_correlation`
 - **能力**：Z-Score异常检测、变化点检测、指标相关性分析
 
-### 6.3 日志分析 Agent（Log）
+### 7.3 日志分析 Agent（Log）
 
 - **工具**：`query_service_logs`, `search_error_patterns`
 - **能力**：错误模式提取、异常堆栈分析、日志聚类
 
-### 6.4 链路分析 Agent（Trace）
+### 7.4 链路分析 Agent（Trace）
 
 - **工具**：`query_service_traces`, `analyze_call_chain`, `get_full_topology`
 - **能力**：调用链分析、故障传播路径识别
 
-### 6.5 值班长 Agent（Analyst）
+### 7.5 值班长 Agent（Analyst）
 
 - **职责**：证据整合、逻辑校验、置信度评估、停止判断
 - **原则**：奥卡姆剃刀、依赖拓扑优先
 
-### 6.6 运营专家 Agent（Reporter）
+### 7.6 运营专家 Agent（Reporter）
 
 - **输出**：结构化事件分析报告
 
 ## 八、核心技术实现
 
-### 7.1 ReAct 模式
+### 8.1 ReAct 模式
 
 交替执行"推理"与"行动"，迭代收敛至高置信度根因：
 
@@ -282,7 +279,7 @@ python main.py --interactive
 3. **Observation**：分析工具结果
 4. **Repeat**：更新假设，决定是否继续
 
-### 7.2 LangGraph 状态图
+### 8.2 LangGraph 状态图
 
 - 动态并行执行
 - 聚合节点汇总结果
@@ -290,13 +287,13 @@ python main.py --interactive
 - 状态持久化
 - 最大迭代限制
 
-### 7.3 RAG 知识库
+### 8.3 RAG 知识库
 
 基于FAISS向量数据库的RAG知识系统：
 
 - 专家知识存储
-- 语义故障匹配
-- 预定义5类故障模式
+- 语义异常模式匹配
+- 预定义5类异常模式参考
 - 历史案例学习
 
 构建索引：
@@ -309,23 +306,23 @@ python build_knowledge_base.py
 
 RCAEval基准数据集（RE1子集），Online Boutique微服务系统：
 
-| 数据文件  | 故障类型 | 描述            |
-| --------- | -------- | --------------- |
-| data1.csv | CPU      | CPU资源耗尽故障 |
-| data2.csv | Delay    | 服务延迟异常    |
-| data3.csv | Disk     | 磁盘I/O异常     |
-| data4.csv | Loss     | 网络丢包故障    |
-| data5.csv | Memory   | 内存泄漏/OOM    |
+| 数据文件  | 描述            |
+| --------- | --------------- |
+| data1.csv | 包含异常模式的监控样本 |
+| data2.csv | 包含异常模式的监控样本 |
+| data3.csv | 包含异常模式的监控样本 |
+| data4.csv | 包含异常模式的监控样本 |
+| data5.csv | 包含异常模式的监控样本 |
 
-每种数据包含12+微服务的CPU、内存、延迟、流量、错误率等指标。
+每种数据包含12+微服务的CPU、内存、延迟、流量、错误率等指标。系统会结合指标、日志、链路等证据分析异常模式和根因候选，而非仅凭数据集文件名判断。
 
-### 自动检测流程
+### 分析流程
 
-1. 扫描cpu, delay, disk, loss, mem五个数据集
+1. 扫描监控样本数据集
 2. 调用 `query_all_services_overview`获取异常概览
-3. 分析各数据集异常指标数量和严重程度
-4. 根据异常特征判断最可能的故障类型
-5. 后续迭代使用检测到的故障类型深入分析
+3. 分析各服务异常指标数量和严重程度
+4. 基于观测证据识别异常模式
+5. 使用检测到的模式进行后续深入分析
 
 ## 十、配置说明
 

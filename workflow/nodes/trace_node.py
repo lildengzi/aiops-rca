@@ -14,7 +14,7 @@ from workflow.state import RCAState
 
 def trace_node(state: RCAState) -> dict:
     """
-    链路分析���点：分析调用链和故障传播路径
+    链路分析节点：分析调用链和故障传播路径
     支持全指标分析模式和容错处理
     支持故障类型自动检测
     """

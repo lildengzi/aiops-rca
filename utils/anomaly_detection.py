@@ -4,8 +4,6 @@
 """
 import numpy as np
 import pandas as pd
-from typing import Optional
-from scipy import stats
 from config import ANOMALY_CONFIG
 
 
@@ -153,7 +151,9 @@ def compute_correlation_matrix(df: pd.DataFrame, columns: list[str] = None) -> p
     \return 相关系数矩阵 DataFrame"""
     if columns:
         df = df[columns]
-    return df.corr()
+    # Use min_periods=1 to avoid NaN when std=0, then fill NaN with 0
+    corr = df.corr(min_periods=1)
+    return corr.fillna(0.0)
 
 
 def find_correlated_metrics(
@@ -179,7 +179,16 @@ def find_correlated_metrics(
     for col in numeric_cols:
         if col == target_col or col == "time":
             continue
-        corr = df[target_col].corr(df[col])
+        try:
+            # Check if either column has zero variance
+            if df[target_col].std() == 0 or df[col].std() == 0:
+                corr = 0.0
+            else:
+                corr = df[target_col].corr(df[col])
+                if pd.isna(corr):
+                    corr = 0.0
+        except Exception:
+            corr = 0.0
         if abs(corr) >= threshold:
             correlations.append({
                 "metric": col,

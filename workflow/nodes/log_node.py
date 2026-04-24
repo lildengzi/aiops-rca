@@ -22,7 +22,6 @@ def log_node(state: RCAState) -> dict:
 
     # 使用检测到的故障类型（优先）或初始故障类型
     fault_type = state.get("detected_fault_type") or state.get("fault_type", "cpu")
-    is_first_iter = state.get("iteration", 0) == 0
 
     try:
         log_agent = create_react_agent(
@@ -64,7 +63,6 @@ def log_node(state: RCAState) -> dict:
         result = log_agent.invoke({"messages": [HumanMessage(content=task)]})
         final_msg = result["messages"][-1].content if result["messages"] else "日志分析未返回结果"
 
-        log_entry = f"[{ts}] 日志分析完成: {final_msg[:300]}..."
         # 生成thinking_log
         log_entry = f"[{ts}] 日志分析完成:\n{final_msg}"
         

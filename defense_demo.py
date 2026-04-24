@@ -32,15 +32,15 @@ def defense_demo():
     print_section("一、实验数据概览")
     
     fault_types = {
-        "cpu": "data1.csv - CPU资源耗尽故障",
-        "mem": "data2.csv - 内存溢出故障", 
-        "delay": "data3.csv - 服务延迟故障",
-        "disk": "data4.csv - 磁盘I/O故障",
-        "loss": "data5.csv - 网络丢包故障"
+        "cpu": "data1.csv - 监控样本（CPU相关指标）",
+        "mem": "data2.csv - 监控样本（内存相关指标）",
+        "delay": "data3.csv - 监控样本（延迟相关指标）",
+        "disk": "data4.csv - 监控样本（磁盘相关指标）",
+        "loss": "data5.csv - 监控样本（网络相关指标）"
     }
     
     data_summary = []
-    print("\n| 数据集 | 行数 | 服务数 | 指标数 | 故障场景 |")
+    print("\n| 数据集 | 行数 | 服务数 | 指标数 | 数据描述 |")
     print("|--------|------|--------|--------|----------|")
     
     for ft, desc in fault_types.items():
@@ -191,14 +191,11 @@ def defense_demo():
     print_section("六、系统运行命令")
     
     print("""
-# 快速验证（无需LLM）
-python quick_test.py
-
-# 完整离线分析
-python demo_offline.py
-
 # 对比实验
 python benchmark.py
+
+# 构建知识库
+python build_knowledge_base.py
 
 # Web界面（需配置API Key）
 streamlit run app.py

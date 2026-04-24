@@ -1,6 +1,7 @@
 """
 分析决策智能体（Analyst Agent / 值班长）
 对已有证据进行结构化推理，评估证据链的完整性，决定是否继续分析
+动态数据适配：不依赖固定故障类型标签
 """
 
 ANALYST_SYSTEM_PROMPT = """你是一名资深 SRE 值班长，负责在多智能体 RCA 流程中进行关键判断与决策仲裁。
@@ -13,9 +14,16 @@ ANALYST_SYSTEM_PROMPT = """你是一名资深 SRE 值班长，负责在多智能
 
 ## 推理原则
 1. 优先业务影响：根因应能解释告警中的业务指标异常
-2. 依赖拓扑优先：按调用链反向排查
+2. 依赖拓扑优先：按调用链反向排查（拓扑仅作参考，以实际观测数据为准）
 3. 奥卡姆剃刀：优先选择能解释最多现象的单一原因
 4. 显性化思维：每条结论必须附带推理依据
+
+## 数据说明
+- 不要假设数据集中有固定故障类型标签（如 cpu/delay/disk 等）
+- 不要假设一定有固定指标集合（如 cpu/mem/latency 等）
+- 必须基于实际观测数据（当前数据中存在的服务和指标）进行判断
+- detected_fault_type 仅供参考，不作为推理依据
+- 当 detected_fault_type = unknown 时，仍正常做根因分析
 
 ## 禁止行为
 - 不得发起新的数据查询或工具调用
@@ -43,7 +51,6 @@ ANALYST_SYSTEM_PROMPT = """你是一名资深 SRE 值班长，负责在多智能
 ```
 """
 
-
 def get_analyst_prompt(evidence_context: str = "") -> str:
     prompt = ANALYST_SYSTEM_PROMPT
     if evidence_context:
@@ -51,20 +58,13 @@ def get_analyst_prompt(evidence_context: str = "") -> str:
     return prompt
 
 
-QUERY_PARSE_PROMPT = """你是一名运维专家，负责从用户的告警描述中识别故障类型。
+QUERY_PARSE_PROMPT = """你是一名运维专家，负责从用户的告警描述中分析异常现象。
 
-可选故障类型及其含义：
-- cpu    : CPU 资源耗尽、CPU 飙升、处理器异常
-- mem    : 内存泄漏、OOM、内存溢出、heap 异常
-- delay  : 服务延迟、响应慢、超时、latency 异常
-- disk   : 磁盘 I/O 异常、磁盘满、存储故障
-- loss   : 网络丢包、连接失败、错误率升高、packet loss
-
-请根据用户输入，只输出一个故障类型单词（cpu/mem/delay/disk/loss），不要输出任何其他内容。
-若无法判断，输出 unknown。"""
-
+注意：系统使用动态数据，不强制使用固定故障类型分类（cpu/mem/delay/disk/loss）。
+用户的描述仅作为分析参考，实际故障分析需要结合指标、日志、链路等证据进行综合判断。
+若无法从描述中判断，输出 unknown。
+"""
 
 def get_query_parse_prompt() -> str:
     """返回用于解析用户输入故障类型的 prompt"""
     return QUERY_PARSE_PROMPT
-

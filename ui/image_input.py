@@ -26,7 +26,7 @@ def render_image_input():
             from input_modules import ImageInputBackend
             backend = ImageInputBackend()
             
-            img = Image.open(io.BytesIO(uploaded_file.read()))
+            img = Image.open(io.BytesIO(uploaded_file.getvalue()))
             ext = uploaded_file.name.split('.')[-1]
             with tempfile.NamedTemporaryFile(delete=False, suffix=f".{ext}") as tmp:
                 img.save(tmp.name)
@@ -47,7 +47,7 @@ def render_image_input():
         col_a1, col_a2 = st.columns([1, 1])
         with col_a1:
             if uploaded_file:
-                img = Image.open(io.BytesIO(uploaded_file.read()))
+                img = Image.open(io.BytesIO(uploaded_file.getvalue()))
                 st.image(img, caption=uploaded_file.name, width='stretch')
         
         with col_a2:

@@ -5,12 +5,14 @@ from ui import (
     render_history_page,
     render_knowledge_page,
     render_dashboard_page,
-    render_feedback_page
+    render_feedback_page,
+    render_monitoring_page,
 )
 
 PAGE_TITLES = {
     "dashboard": "AIOps - Fault Trend Monitor",
     "analysis": "AIOps - Fault Analysis",
+    "monitoring": "AIOps - Monitoring Data",
     "history": "AIOps - History Reports",
     "knowledge": "AIOps - Knowledge Base",
     "feedback": "AIOps - User Feedback"
@@ -19,6 +21,7 @@ PAGE_TITLES = {
 PAGE_DESCRIPTIONS = {
     "dashboard": "View system fault trends and high-frequency fault statistics",
     "analysis": "Enter alert description, system will auto-detect fault type.",
+    "monitoring": "Upload and manage monitoring data for RCA analysis.",
     "history": "View historical fault analysis reports.",
     "knowledge": "Manage fault knowledge base.",
     "feedback": "Submit diagnostic feedback to help improve the model."
@@ -44,6 +47,8 @@ if current_page == "dashboard":
     render_dashboard_page()
 elif current_page == "analysis":
     render_analysis_page(config)
+elif current_page == "monitoring":
+    render_monitoring_page()
 elif current_page == "history":
     render_history_page()
 elif current_page == "knowledge":

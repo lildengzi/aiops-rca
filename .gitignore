@@ -10,6 +10,7 @@ env/
 *.egg-info/
 dist/
 build/
+.pytest_cache
 
 # IDE
 .idea
@@ -18,6 +19,7 @@ build/
 *.swp
 *.swo
 .kilo
+.continue
 
 # 项目生成
 logs/
@@ -28,6 +30,7 @@ reports/
 data/real_data/
 feedback/
 think_log/
+tests/
 
 # OS
 .DS_Store

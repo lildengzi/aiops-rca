@@ -16,7 +16,7 @@ This system implements a multi-agent collaborative AI system that simulates expe
 
 ### Core Features
 
-- **Auto Fault Type Detection**: Input any alert description, system automatically scans 5 datasets (CPU/Delay/Disk/Loss/Memory) and identifies fault type based on anomaly patterns
+- **Anomaly Detection**: Input any alert description, system scans monitoring sample datasets and identifies anomaly patterns based on evidence from metrics, logs, and traces
 - **Multi-Agent Collaboration**: 6 specialized agents working together for complex fault diagnosis
 - **ReAct Pattern**: Alternating reasoning and action for iterative convergence to high-confidence root causes
 - **Tool-Based Data Access**: Metrics, logs, traces, and topology encapsulated as callable tools (MCP simulation)
@@ -64,12 +64,11 @@ This system implements a multi-agent collaborative AI system that simulates expe
 
 ## 3. Project Structure
 
-> Supplement for the current repository state: besides the core modules below, the project now also includes `benchmark.py`, `quick_test.py`, `defense_demo.py`, `data_stats.py`, `benchmark_results/`, `feedback/`, and `think_log/` for experiments, demos, statistics, user feedback, and full reasoning logs.
+> Supplement for the current repository state: besides the core modules below, the project now also includes `benchmark.py`, `defense_demo.py`, `benchmark_results/`, `feedback/`, and `think_log/` for experiments, demos, user feedback, and full reasoning logs.
 
 ```
 aiops-rca/
 ├── main.py                    # CLI entry point (requires LLM API Key)
-├── demo_offline.py            # Offline demo (no API Key needed)
 ├── app.py                     # Streamlit Web UI entry
 ├── config.py                  # System configuration
 ├── build_knowledge_base.py    # Knowledge base builder
@@ -88,8 +87,7 @@ aiops-rca/
 │   ├── metric_tools.py        # Metric query tools
 │   ├── log_tools.py           # Log query tools
 │   ├── trace_tools.py         # Trace query tools
-│   ├── topology_tools.py      # Topology/CMDB tools
-│   └── extract_reports_logs.py # Report log extraction
+│   └── topology_tools.py      # Topology/CMDB tools
 ├── workflow/                  # Workflow orchestration
 │   ├── __init__.py
 │   ├── orchestrator.py        # LangGraph workflow entry
@@ -98,6 +96,7 @@ aiops-rca/
 │   ├── utils.py              # Workflow utilities
 │   └── nodes/                # Workflow nodes
 │       ├── __init__.py
+│       ├── detect_fault_node.py  # Fault type detection node
 │       ├── master_node.py     # Master node
 │       ├── metric_node.py     # Metric node
 │       ├── log_node.py        # Log node
@@ -119,17 +118,23 @@ aiops-rca/
 │   ├── __init__.py
 │   ├── voice.py              # Voice recognition backend
 │   └── image.py             # Image analysis backend
+├── cli/                       # CLI components
+│   ├── __init__.py
+│   ├── runner.py              # CLI runner
+│   ├── display.py             # Display utilities
+│   └── reporting.py           # Report generation
 ├── utils/                     # Utilities
 │   ├── __init__.py
 │   ├── data_loader.py         # Data loading
-│   └── anomaly_detection.py   # Anomaly detection algorithms
+│   ├── anomaly_detection.py   # Anomaly detection algorithms
+│   ├── csv_processor.py        # CSV validation and processing
+│   └── service_parser.py       # Service name/metric extraction
 ├── data/                      # Test datasets
-│   ├── data1.csv             # CPU fault data
-│   ├── data2.csv             # Delay fault data
-│   ├── data3.csv             # Disk fault data
-│   ├── data4.csv             # Loss fault data
-│   ├── data5.csv             # Memory fault data
-│   └── real_data/           # Real scenario fault data
+│   ├── data1.csv             # Monitoring sample data
+│   ├── data2.csv             # Monitoring sample data
+│   ├── data3.csv             # Monitoring sample data
+│   ├── data4.csv             # Monitoring sample data
+│   └── data5.csv             # Monitoring sample data
 ├── knowledge_base/            # Knowledge base
 │   ├── __init__.py
 │   ├── rca_knowledge.md      # RCA expert knowledge
@@ -137,6 +142,7 @@ aiops-rca/
 │   ├── rag_index.py          # RAG index builder
 │   ├── data_analyzer.py       # Data analyzer
 │   ├── fault_patterns.py     # Fault pattern library
+│   ├── fault_patterns.json   # Predefined anomaly patterns
 │   └── storage.py            # Knowledge storage
 ├── logs/                      # System logs
 ├── models/                    # Model files
@@ -160,13 +166,7 @@ streamlit run app.py
 
 Browser opens http://localhost:8501
 
-### 4.3 Offline Demo
-
-```bash
-python demo_offline.py
-```
-
-### 4.4 Full Multi-Agent Analysis (Requires LLM API Key)
+### 4.3 Full Multi-Agent Analysis (Requires LLM API Key)
 
 ```bash
 # Auto-detect fault type (recommended)
@@ -185,7 +185,7 @@ python main.py --query "frontend latency spike" --disable-full-analysis
 python main.py --interactive
 ```
 
-### 4.5 Multimodal Input (Web UI)
+### 4.4 Multimodal Input (Web UI)
 
 System supports three input methods:
 
@@ -195,11 +195,11 @@ System supports three input methods:
 | Voice Input | Click record button, supports Chinese/English |
 | Image Upload | Upload monitoring charts, auto-generate alert |
 
-### Fault Type Auto-Detection
+### Fault Analysis Mode
 
 System supports two modes:
-1. **Auto Detection (Default)**: Input any alert, system automatically scans 5 datasets to determine fault type
-2. **Manual Mode**: Use `--fault` parameter to specify (cpu/delay/disk/loss/mem)
+1. **Auto Detection (Default)**: Input any alert, system automatically scans monitoring sample datasets to identify anomaly patterns
+2. **Manual Mode**: Use `--fault` parameter to specify which sample dataset to load (cpu/delay/disk/loss/mem)
 
 ## 5. Runtime Outputs and Auxiliary Scripts
 
@@ -218,11 +218,8 @@ After CLI or Web analysis runs, the system will create the following directories
 
 | Script | Description |
 |--------|-------------|
-| `quick_test.py` | Quick validation of all built-in fault datasets without LLM API |
-| `demo_offline.py` | Full offline anomaly-analysis demo |
 | `benchmark.py` | Comparison with traditional SRE/statistical methods |
 | `defense_demo.py` | Defense / presentation-oriented demo output |
-| `data_stats.py` | Generate dashboard-oriented mock trend and fault statistics |
 | `build_knowledge_base.py` | Build or refresh the fault knowledge base |
 
 ### 5.3 Current Web UI Pages
@@ -251,51 +248,51 @@ System contains 5 main pages via sidebar:
 
 ## 7. Agent Design
 
-### 6.1 Master Agent
+### 7.1 Master Agent
 - **Role**: SRE Expert / Commander
 - **Responsibilities**: Parse alerts, create plans, dispatch agents, adjust strategy
 - **Output**: Structured action plan (JSON format)
 
-### 6.2 Metric Agent
+### 7.2 Metric Agent
 - **Tools**: `query_service_metrics`, `query_all_services_overview`, `query_metric_correlation`
 - **Capabilities**: Z-Score anomaly detection, change point detection, correlation analysis
 
-### 6.3 Log Agent
+### 7.3 Log Agent
 - **Tools**: `query_service_logs`, `search_error_patterns`
 - **Capabilities**: Error pattern extraction, stack trace analysis, log clustering
 
-### 6.4 Trace Agent
+### 7.4 Trace Agent
 - **Tools**: `query_service_traces`, `analyze_call_chain`, `get_full_topology`
 - **Capabilities**: Call chain analysis, propagation path identification
 
-### 6.5 Analyst Agent
+### 7.5 Analyst Agent
 - **Responsibilities**: Evidence integration, logic validation, confidence assessment, stop decision
 - **Principles**: Occam's razor, topology priority, explicit reasoning
 
-### 6.6 Reporter Agent
+### 7.6 Reporter Agent
 - **Output**: Structured event analysis report
 
 ## 8. Core Technologies
 
-### 7.1 ReAct Pattern
+### 8.1 ReAct Pattern
 Alternating reasoning and action for iterative convergence:
 1. **Thought**: Generate hypothesis based on evidence
 2. **Action**: Call tools to get new data
 3. **Observation**: Analyze tool results
 4. **Repeat**: Update hypothesis, decide continue/stop
 
-### 7.2 LangGraph State Graph
+### 8.2 LangGraph State Graph
 - Dynamic parallel execution
 - Aggregate node for result consolidation
 - Analyst decision for iteration control
 - State persistence across iterations
 - Maximum iteration limits
 
-### 7.3 RAG Knowledge Base
+### 8.3 RAG Knowledge Base
 FAISS-based RAG knowledge system:
 - Expert knowledge storage
-- Semantic fault matching
-- 5 predefined fault patterns
+- Semantic anomaly pattern matching
+- 5 predefined anomaly pattern templates
 - Historical case learning
 
 Rebuild index:
@@ -307,23 +304,23 @@ python build_knowledge_base.py
 
 RCAEval benchmark dataset (RE1 subset), Online Boutique microservice system:
 
-| File     | Fault Type | Description          |
-|----------|------------|----------------------|
-| data1.csv | CPU        | CPU resource exhaustion |
-| data2.csv | Delay      | Service latency      |
-| data3.csv | Disk       | Disk I/O anomaly     |
-| data4.csv | Loss       | Network packet loss  |
-| data5.csv | Memory     | Memory leak/OOM      |
+| File     | Description          |
+|----------|----------------------|
+| data1.csv | Monitoring sample with anomaly patterns |
+| data2.csv | Monitoring sample with anomaly patterns |
+| data3.csv | Monitoring sample with anomaly patterns |
+| data4.csv | Monitoring sample with anomaly patterns |
+| data5.csv | Monitoring sample with anomaly patterns |
 
-Each dataset contains 12+ microservices with CPU, memory, latency, load, error rate metrics.
+Each dataset contains 12+ microservices with CPU, memory, latency, load, error rate metrics. The system analyzes evidence from metrics, logs, and traces to identify anomaly patterns and root cause candidates, rather than relying on dataset file names.
 
-### Auto-Detection Flow
+### Analysis Flow
 
-1. Scan all 5 datasets (cpu, delay, disk, loss, mem)
+1. Scan monitoring sample datasets
 2. Call `query_all_services_overview` for anomaly overview
-3. Analyze anomaly count and severity per dataset
-4. Determine most likely fault type based on characteristics
-5. Use detected fault type for subsequent deep analysis
+3. Analyze anomaly count and severity across services
+4. Identify anomaly patterns based on evidence
+5. Use detected patterns for subsequent deep analysis
 
 ## 10. Configuration
 

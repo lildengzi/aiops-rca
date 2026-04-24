@@ -1,13 +1,15 @@
 """
-故障模式定义模块
-包含所有预定义的故障模式知识库
+异常模式定义模块
+包含所有预定义的异常模式参考模板，用于辅助根因分析
 """
 from typing import Dict
 
-# 故障模式知识库
+# 异常模式参考库（key保留cpu/mem/delay/disk/loss作为模式标识符）
 FAULT_PATTERNS: Dict[str, Dict] = {
     "cpu": {
-        "name": "CPU资源耗尽故障",
+        "name": "CPU/资源使用异常模式",
+        "pattern_type": "anomaly_pattern",
+        "usage_note": "若观测到CPU相关指标异常，可参考此模式作为分析模板",
         "typical_metrics": ["cpu_usage", "system_load", "process_threads"],
         "typical_services": ["frontend", "cartservice", "checkoutservice"],
         "common_roots": [
@@ -17,7 +19,7 @@ FAULT_PATTERNS: Dict[str, Dict] = {
             "计算密集型任务异常",
             "死锁导致线程自旋"
         ],
-        "propagation_path": "高CPU服务 → 上游服务延迟升高 → 级联超时",
+        "propagation_path": "高CPU服务 → 上游服务延迟升高 → 级联超时（典型传播路径参考）",
         "mitigation": [
             "扩容CPU资源",
             "优化代码逻辑减少CPU消耗",
@@ -26,7 +28,9 @@ FAULT_PATTERNS: Dict[str, Dict] = {
         ]
     },
     "mem": {
-        "name": "内存泄漏/溢出故障",
+        "name": "内存使用异常模式",
+        "pattern_type": "anomaly_pattern",
+        "usage_note": "若观测到内存相关指标异常，可参考此模式作为分析模板",
         "typical_metrics": ["mem_usage", "heap_used", "gc_duration"],
         "typical_services": ["cartservice", "productcatalogservice", "checkoutservice"],
         "common_roots": [
@@ -36,7 +40,7 @@ FAULT_PATTERNS: Dict[str, Dict] = {
             "线程池泄漏",
             "类加载器泄漏"
         ],
-        "propagation_path": "内存占用升高 → GC频繁 → 响应延迟 → OOM崩溃",
+        "propagation_path": "内存占用升高 → GC频繁 → 响应延迟 → OOM崩溃（典型传播路径参考）",
         "mitigation": [
             "增加内存配额",
             "排查内存泄漏点",
@@ -45,7 +49,9 @@ FAULT_PATTERNS: Dict[str, Dict] = {
         ]
     },
     "delay": {
-        "name": "服务延迟异常故障",
+        "name": "服务延迟异常模式",
+        "pattern_type": "anomaly_pattern",
+        "usage_note": "若观测到延迟相关指标异常，可参考此模式作为分析模板",
         "typical_metrics": ["latency_p99", "latency_p95", "request_duration"],
         "typical_services": ["frontend", "recommendationservice", "productcatalogservice"],
         "common_roots": [
@@ -55,7 +61,7 @@ FAULT_PATTERNS: Dict[str, Dict] = {
             "锁竞争导致阻塞",
             "资源池耗尽等待"
         ],
-        "propagation_path": "下游服务延迟 → 上游调用超时 → 错误率升高",
+        "propagation_path": "下游服务延迟 → 上游调用超时 → 错误率升高（典型传播路径参考）",
         "mitigation": [
             "添加缓存层",
             "优化数据库查询",
@@ -64,7 +70,9 @@ FAULT_PATTERNS: Dict[str, Dict] = {
         ]
     },
     "disk": {
-        "name": "磁盘I/O异常故障",
+        "name": "磁盘相关性能异常模式",
+        "pattern_type": "anomaly_pattern",
+        "usage_note": "若观测到磁盘I/O相关指标异常，可参考此模式作为分析模板",
         "typical_metrics": ["disk_io_wait", "disk_usage", "io_ops"],
         "typical_services": ["redis", "productcatalogservice", "checkoutservice"],
         "common_roots": [
@@ -74,7 +82,7 @@ FAULT_PATTERNS: Dict[str, Dict] = {
             "磁盘配额耗尽",
             "文件句柄泄漏"
         ],
-        "propagation_path": "磁盘I/O升高 → 读写操作延迟 → 服务响应变慢",
+        "propagation_path": "磁盘I/O升高 → 读写操作延迟 → 服务响应变慢（典型传播路径参考）",
         "mitigation": [
             "清理磁盘空间",
             "配置日志轮转",
@@ -83,7 +91,9 @@ FAULT_PATTERNS: Dict[str, Dict] = {
         ]
     },
     "loss": {
-        "name": "网络丢包/连接故障",
+        "name": "网络连接/丢包异常模式",
+        "pattern_type": "anomaly_pattern",
+        "usage_note": "若观测到网络错误或丢包相关指标异常，可参考此模式作为分析模板",
         "typical_metrics": ["error_rate", "connection_count", "packet_loss"],
         "typical_services": ["frontend", "checkoutservice", "shippingservice"],
         "common_roots": [
@@ -93,7 +103,7 @@ FAULT_PATTERNS: Dict[str, Dict] = {
             "DNS解析失败",
             "服务实例宕机"
         ],
-        "propagation_path": "网络异常 → 连接失败 → 请求重试风暴 → 级联故障",
+        "propagation_path": "网络异常 → 连接失败 → 请求重试风暴 → 级联故障（典型传播路径参考）",
         "mitigation": [
             "检查网络连通性",
             "添加重试和熔断机制",

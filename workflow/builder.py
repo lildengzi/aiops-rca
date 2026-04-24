@@ -2,6 +2,7 @@
 工作流图构建与执行入口
 """
 from langgraph.graph import StateGraph, END
+from copy import deepcopy
 from config import WORKFLOW_CONFIG
 from workflow.state import RCAState
 from workflow.nodes import (
@@ -17,8 +18,17 @@ from workflow.nodes import (
 
 
 def should_continue_or_stop(state: RCAState) -> str:
-    """决定是继续迭代还是生成最终报告"""
-    if state.get("should_stop", False):
+    """决定是继续迭代还是生成最终报告（仅基于分析师输出）"""
+    analyst_output = state.get("analyst_output")
+    if analyst_output and isinstance(analyst_output, dict):
+        # 优先使用分析师的结构化决策
+        if not analyst_output.get("should_continue", True):
+            return "reporter"
+        # 达到最大迭代次数也停止
+        if state.get("iteration", 0) >= state.get("max_iterations", 3):
+            return "reporter"
+    # 达到最大迭代次数强制停止
+    if state.get("iteration", 0) >= state.get("max_iterations", 3):
         return "reporter"
     return "master"
 
@@ -61,7 +71,7 @@ def build_rca_workflow() -> StateGraph:
     # 汇总节点指向分析师节点
     workflow.add_edge("aggregate", "analyst")
 
-    # 条件分支：分析师决定是否继续
+    # 条件分支：分析师决定是否继续（分析师是唯一仲裁者）
     workflow.add_conditional_edges(
         "analyst",
         should_continue_or_stop,
@@ -79,7 +89,7 @@ def build_rca_workflow() -> StateGraph:
 
 def run_rca(
     user_query: str,
-    fault_type: str = "cpu",
+    fault_type: str = "unknown",  # 默认unknown，不预设固定类型
     max_iterations: int = None,
     full_analysis: bool = True,
     progress_callback = None,
@@ -89,7 +99,7 @@ def run_rca(
 
     Args:
         user_query: 用户问题描述
-        fault_type: 故障类型 (cpu/delay/disk/loss/mem)
+        fault_type: 故障类型参考标签（默认为unknown，不驱动核心分析）
         max_iterations: 最大迭代次数
         full_analysis: 是否启用全指标分析模式（默认启用）
         progress_callback: 进度回调函数，接收(node_name, status)参数
@@ -105,17 +115,21 @@ def run_rca(
     initial_state: RCAState = {
         "user_query": user_query,
         "fault_type": fault_type,
-        "detected_fault_type": "",  # 自动检测后的故障类型
+        "detected_fault_type": "unknown",  # 初始为unknown，由detect_fault节点更新
         "iteration": 0,
         "max_iterations": max_iterations,
-        "should_stop": False,
         "parallel_degree": 3,  # 默认并行度
         "full_analysis": full_analysis,
         "master_plan": "",
-        "metric_results": [],
-        "log_results": [],
-        "trace_results": [],
-        "analyst_decision": "",
+        "master_reflection": "",
+        "metric_analysis": None,
+        "log_analysis": None,
+        "trace_analysis": None,
+        "aggregate_summary": None,
+        "analyst_output": None,
+        "metric_history": [],
+        "log_history": [],
+        "trace_history": [],
         "final_report": "",
         "thinking_log": [],
     }
@@ -123,14 +137,13 @@ def run_rca(
     # 执行工作流并跟踪进度
     if progress_callback:
         # 使用stream模式跟踪每个节点执行
-        final_state = initial_state.copy()
+        final_state = deepcopy(initial_state)
         for event in app.stream(initial_state):
             for node_name, output in event.items():
                 progress_callback(node_name, "completed")
-                # 正确合并输出，保留list的追加行为
+                # 正确合并输出
                 if output:
-                    # 对于Annotated[list, operator.add]类型的字段，使用追加而非替换
-                    list_fields = ['metric_results', 'log_results', 'trace_results', 'thinking_log']
+                    list_fields = ['metric_history', 'log_history', 'trace_history', 'thinking_log']
                     for key, value in output.items():
                         if key in list_fields and isinstance(value, list):
                             if key in final_state:

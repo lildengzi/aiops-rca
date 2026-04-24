@@ -1,9 +1,10 @@
 import streamlit as st
 
-PAGE_OPTIONS = ["Fault Trend", "Fault Analysis", "History", "Knowledge Base", "Feedback"]
+PAGE_OPTIONS = ["Fault Trend", "Fault Analysis", "Monitoring Data", "History", "Knowledge Base", "Feedback"]
 PAGE_KEYS = {
     "Fault Trend": "dashboard",
     "Fault Analysis": "analysis",
+    "Monitoring Data": "monitoring",
     "History": "history",
     "Knowledge Base": "knowledge",
     "Feedback": "feedback"

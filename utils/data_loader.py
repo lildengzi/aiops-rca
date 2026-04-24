@@ -1,147 +1,208 @@
 """
 数据加载与预处理工具
 优先级：实时数据缓存 > 经验库 CSV
+
+模块拆分：
+- csv_processor.py: CSVProcessor - CSV处理、验证、故障类型推断
+- service_parser.py: ServiceParser - 服务名与指标解析
+- data_loader.py: 实时缓存管理 + 主入口函数
 """
+import os
 import pandas as pd
-import numpy as np
 from typing import Optional
-from config import FAULT_DATA_MAP, METRIC_CATEGORIES
+from config import FAULT_DATA_MAP
 
-# 实时数据缓存：由 simulator/rca_adapter 的 inject_into_tools() 写入
-# 工具层所有函数通过 load_fault_data() 自动获取实时数据
-_realtime_cache: dict[str, pd.DataFrame] = {}
+from .csv_processor import CSVProcessor
+from .service_parser import ServiceParser, get_service_metrics
 
 
+# ========= 实时数据缓存管理器 =========
+class _RealtimeCacheManager:
+    """管理实时数据缓存，封装全局状态"""
+
+    def __init__(self):
+        self._cache: dict[str, pd.DataFrame] = {}
+
+    def set(self, fault_type: str, df: pd.DataFrame) -> None:
+        """写入缓存"""
+        self._cache[fault_type] = df
+
+    def get(self, fault_type: str) -> Optional[pd.DataFrame]:
+        """读取缓存"""
+        return self._cache.get(fault_type)
+
+    def pop(self, fault_type: str) -> Optional[pd.DataFrame]:
+        """移除指定类型缓存"""
+        return self._cache.pop(fault_type, None)
+
+    def clear(self) -> None:
+        """清空所有缓存"""
+        self._cache.clear()
+
+    def items(self):
+        """返回缓存项"""
+        return self._cache.items()
+
+    def is_empty(self, fault_type: str) -> bool:
+        """检查指定类型缓存是否为空"""
+        df = self.get(fault_type)
+        return df is None or df.empty
+
+
+# 全局缓存管理器实例
+_cache_manager = _RealtimeCacheManager()
+
+
+# ========= 公开API函数 =========
 def set_realtime_data(fault_type: str, df: pd.DataFrame) -> None:
-    """\brief 写入实时数据缓存（由 RCAAdapter.inject_into_tools() 调用）
-    \param fault_type 故障类型
-    \param df 包含时序指标的 Pandas DataFrame"""
-    _realtime_cache[fault_type] = df
+    """\\brief 写入实时数据缓存（由 RCAAdapter.inject_into_tools() 调用）
+    \\param fault_type 故障类型标签（用于缓存索引，不影响数据解析）
+    \\param df 包含时序指标的 Pandas DataFrame"""
+    _cache_manager.set(fault_type, df)
 
 
 def get_realtime_data(fault_type: str) -> Optional[pd.DataFrame]:
-    """\brief 读取实时数据缓存
-    \param fault_type 故障类型
-    \return 缓存的 DataFrame，不存在则返回 None"""
-    return _realtime_cache.get(fault_type)
+    """\\brief 读取实时数据缓存
+    \\param fault_type 故障类型
+    \\return 缓存的 DataFrame，不存在则返回 None"""
+    return _cache_manager.get(fault_type)
 
 
-def load_fault_data(fault_type: str) -> pd.DataFrame:
-    """\brief 加载指定故障类型的数据（优先级：实时缓存 > CSV 文件）
-    \param fault_type 故障类型 (cpu/delay/disk/loss/mem)
-    \return 包含该故障类型指标的 Pandas DataFrame
-    \throw ValueError 当 fault_type 不存在时"""
-    # 优先：实时数据缓存
-    if fault_type in _realtime_cache and not _realtime_cache[fault_type].empty:
-        return _realtime_cache[fault_type]
-
-    # 回退：经验库 CSV
-    path = FAULT_DATA_MAP.get(fault_type)
-    if path is None:
-        raise ValueError(f"未知故障类型: {fault_type}，可选: {list(FAULT_DATA_MAP.keys())}")
-    df = pd.read_csv(path)
-    # 有些数据集有两列 time，去重
-    if df.columns.duplicated().any():
-        df = df.loc[:, ~df.columns.duplicated()]
-    return df
-
-
-def parse_columns(df: pd.DataFrame) -> dict:
-    """\brief 解析 DataFrame 列名，按服务和指标类型分组
-    \param df 包含时序指标数据的 DataFrame
-    \return 嵌套字典 {service_name: {metric_type: [column_names]}}"""
-    result = {}
-    for col in df.columns:
-        if col == "time":
-            continue
-        parts = col.rsplit("_", 1)
-        if len(parts) == 2:
-            service, metric_suffix = parts
-            metric_type = _classify_metric(metric_suffix, col)
-            if service not in result:
-                result[service] = {}
-            if metric_type not in result[service]:
-                result[service][metric_type] = []
-            result[service][metric_type].append(col)
+def inject_csv_as_realtime(file_path: str, fault_type: str = None) -> tuple[bool, str, Optional[pd.DataFrame]]:
+    """\\brief 将CSV文件作为实时数据注入
+    严格要求 time 列存在，不做 timestamp/ts 兼容
+    \\param file_path CSV文件路径或文件对象
+    \\param fault_type 指定故障类型标签（可选，不影响数据解析）
+    \\return (成功标志, 消息, DataFrame)
+    """
+    try:
+        if hasattr(file_path, 'read'):
+            df = pd.read_csv(file_path)
         else:
-            for cat_type, suffixes in METRIC_CATEGORIES.items():
-                for suffix in suffixes:
-                    if col.endswith(f"_{suffix}"):
-                        service = col[:col.rfind(f"_{suffix}")]
-                        if service not in result:
-                            result[service] = {}
-                        if cat_type not in result[service]:
-                            result[service][cat_type] = []
-                        result[service][cat_type].append(col)
-                        break
+            df = pd.read_csv(file_path)
+
+        if df.empty:
+            return False, "CSV文件为空", None
+
+        # 验证CSV格式（严格要求 time 列，不兼容其他名称）
+        is_valid, errors = CSVProcessor.validate_format(df)
+        if not is_valid:
+            return False, f"CSV格式验证失败: {'; '.join(errors)}", None
+
+        # 严格要求 time 列存在（已由 validate_format 保证）
+        df = CSVProcessor.preprocess(df)
+
+        # fault_type 仅作为缓存标签，不影响数据解析
+        if fault_type is None:
+            fault_type = CSVProcessor.infer_fault_type(df)
+            if fault_type == "unknown":
+                fault_type = "unknown"
+
+        set_realtime_data(fault_type, df)
+        return True, f"成功注入{fault_type}类型数据，共{len(df)}行", df
+
+    except Exception as e:
+        return False, f"注入失败: {str(e)}", None
+
+
+def list_realtime_data() -> dict[str, dict]:
+    """\\brief 列出所有实时缓存数据的信息
+    \\return {fault_type: {"rows": 行数, "columns": 列数, "time_range": (start, end), "services": {...}}}
+    """
+    result = {}
+    for fault_type, df in _cache_manager.items():
+        if df.empty:
+            continue
+
+        services = ServiceParser.get_all_services(df)
+        service_stats = {}
+        for svc in services:
+            svc_cols = [c for c in df.columns if c.startswith(f"{svc}_")]
+            service_stats[svc] = {
+                "metric_count": len(svc_cols),
+                "columns": svc_cols,
+            }
+
+        result[fault_type] = {
+            "rows": len(df),
+            "columns": len(df.columns),
+            "time_range": (
+                int(df["time"].min()) if "time" in df.columns else None,
+                int(df["time"].max()) if "time" in df.columns else None,
+            ),
+            "services": service_stats,
+        }
     return result
 
 
-def _classify_metric(suffix: str, full_col: str) -> str:
-    """\brief 对指标后缀进行分类
-    \param suffix 指标后缀
-    \param full_col 完整列名
-    \return 指标类型: resource_cpu/resource_mem/performance/traffic/error/other"""
-    suffix_lower = suffix.lower()
-    if suffix_lower in ("cpu",):
-        return "resource_cpu"
-    elif suffix_lower in ("mem",):
-        return "resource_mem"
-    elif "latency" in suffix_lower:
-        return "performance"
-    elif suffix_lower in ("load", "workload"):
-        return "traffic"
-    elif suffix_lower in ("error",):
-        return "error"
+def clear_realtime_cache(fault_type: str = None) -> None:
+    """\\brief 清理实时数据缓存
+    \\param fault_type 指定故障类型，为None则清理所有"""
+    if fault_type:
+        _cache_manager.pop(fault_type)
     else:
-        return "other"
+        _cache_manager.clear()
 
 
-def get_service_metrics(
-    df: pd.DataFrame,
-    service: str,
-    start_time: Optional[int] = None,
-    end_time: Optional[int] = None,
-) -> pd.DataFrame:
-    """\brief 获取指定服务在指定时间范围内的所有指标
-    \param df 指标数据 DataFrame
-    \param service 目标服务名
-    \param start_time 起始时间戳（可选）
-    \param end_time 结束时间戳（可选）
-    \return 筛选后的服务指标子集 DataFrame"""
-    cols = ["time"] + [c for c in df.columns if c.startswith(f"{service}_")]
-    sub = df[cols].copy()
-    if start_time is not None:
-        sub = sub[sub["time"] >= start_time]
-    if end_time is not None:
-        sub = sub[sub["time"] <= end_time]
-    return sub
+def load_fault_data(fault_type: str) -> pd.DataFrame:
+    """\\brief 加载指定标签的数据（优先级：实时缓存 > CSV 文件 > 自动扫描）
+    \\param fault_type 数据标签或文件路径
+    \\return 包含指标数据的 Pandas DataFrame
+    \\throw ValueError 当所有加载方式都失败时"""
+    # 优先：实时数据缓存
+    if not _cache_manager.is_empty(fault_type):
+        return _cache_manager.get(fault_type)
+
+    # 尝试1：经验库 CSV（fault_type 作为键）
+    path = FAULT_DATA_MAP.get(fault_type)
+    if path is not None:
+        df = pd.read_csv(path)
+        if df.columns.duplicated().any():
+            df = df.loc[:, ~df.columns.duplicated()]
+        return df
+
+    # 尝试2：fault_type 作为文件路径直接加载
+    if os.path.exists(fault_type):
+        df = pd.read_csv(fault_type)
+        if df.columns.duplicated().any():
+            df = df.loc[:, ~df.columns.duplicated()]
+        return df
+
+    # 尝试3：自动扫描 data/ 目录，加载第一个可用的 CSV
+    data_dir = DATA_DIR
+    if os.path.isdir(data_dir):
+        csv_files = [f for f in os.listdir(data_dir) if f.endswith('.csv')]
+        if csv_files:
+            # 优先使用与 fault_type 相关的文件，否则用第一个
+            matched = [f for f in csv_files if fault_type.lower() in f.lower()]
+            target = matched[0] if matched else csv_files[0]
+            path = os.path.join(data_dir, target)
+            df = pd.read_csv(path)
+            if df.columns.duplicated().any():
+                df = df.loc[:, ~df.columns.duplicated()]
+            return df
+
+    # 所有尝试都失败，抛出友好错误
+    available = list(FAULT_DATA_MAP.keys()) + [f for f in os.listdir(data_dir) if f.endswith('.csv')] if os.path.isdir(data_dir) else []
+    raise ValueError(
+        f"无法加载数据: '{fault_type}'。可用选项: {available}。"
+        f"请使用 --fault 参数指定（如 cpu/delay/disk/loss/mem），或确保 data/ 目录有 CSV 文件。"
+    )
+
+
+def parse_columns(df: pd.DataFrame) -> dict:
+    """\\brief 解析 DataFrame 列名，按服务和指标分组（委托给 ServiceParser）
+    \\param df 包含时序指标数据的 DataFrame
+    \\return 嵌套字典 {service_name: {metric_name: [column_names]}}"""
+    return ServiceParser.parse_columns(df)
 
 
 def get_all_services(df: pd.DataFrame) -> list[str]:
-    """\brief 从 DataFrame 列名中提取所有服务名
-    \param df 指标数据 DataFrame
-    \return 排序后的服务名列表"""
-    services = set()
-    for col in df.columns:
-        if col == "time":
-            continue
-        for cat_suffixes in METRIC_CATEGORIES.values():
-            for suffix in cat_suffixes:
-                if col.endswith(f"_{suffix}"):
-                    svc = col[:col.rfind(f"_{suffix}")]
-                    services.add(svc)
-                    break
-        if "-" in col:
-            base = col.split("_")
-            if len(base) >= 2:
-                svc_name = "_".join(base[:-1])
-                if base[-1].startswith("latency"):
-                    services.add(svc_name)
-    for col in df.columns:
-        for suf in ["_cpu", "_mem", "_error"]:
-            if col.endswith(suf):
-                services.add(col[: -len(suf)])
-    services.discard("time")
-    return sorted(services)
+    """\\brief 从 DataFrame 列名中提取所有服务名（委托给 ServiceParser）
+    \\param df 指标数据 DataFrame
+    \\return 排序后的服务名列表"""
+    return ServiceParser.get_all_services(df)
 
+
+# get_service_metrics 直接从 service_parser 导入
+# 已通过: from .service_parser import get_service_metrics

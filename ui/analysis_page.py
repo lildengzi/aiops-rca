@@ -6,6 +6,7 @@ import glob
 import time
 
 
+
 AGENT_ORDER = ["故障类型检测", "运维专家", "指标分析专家", "日志分析专家", "链路分析专家", "数据汇总", "值班长", "运营专家"]
 
 
@@ -22,7 +23,7 @@ def render_analysis_page(config):
 
     prompt = None
     
-    input_tab1, input_tab2, input_tab3 = st.tabs(["Text Input", "Voice Input", "Image Upload"])
+    input_tab1, input_tab2, input_tab3, input_tab4 = st.tabs(["Text Input", "Voice Input", "Image Upload", "CSV Data"])
     
     with input_tab1:
         prompt = st.chat_input("例如：过去1小时frontend服务CPU飙升，请分析根因")
@@ -38,6 +39,52 @@ def render_analysis_page(config):
         image_result = render_image_input()
         if image_result:
             prompt = image_result
+
+    with input_tab4:
+        st.markdown("**Upload CSV Data for Analysis**")
+        st.markdown("""
+        **CSV 格式要求：**
+        - 时间列必须命名为 `time`（不支持 timestamp/ts 等别名）
+        - 其他列格式为 `{service}_{metric}`，例如：`frontend_cpu`、`checkoutservice_latency_p99`
+        - `service` 必须来自系统拓扑中的服务名（frontend/cartservice/checkoutservice 等）
+        - `metric` 名称可动态扩展，不要求固定集合（如 cpu/mem/latency 等）
+        - 数据可只包含部分服务和部分指标，不必覆盖全部服务
+        - 上传后系统会自动识别当前数据中的服务与指标
+        """)
+
+        csv_file = st.file_uploader(
+            "Choose CSV file",
+            type="csv",
+            key="analysis_csv_uploader",
+            help="CSV must contain 'time' column and columns like 'service_metric'"
+        )
+
+        fault_type_csv = st.selectbox(
+            "Data label (optional)",
+            ["Auto-detect"] + ["cpu", "delay", "disk", "loss", "mem", "unknown"],
+            key="analysis_fault_type",
+            help="仅作为缓存标签，不影响数据解析。Auto-detect 将自动推断。"
+        )
+
+        if csv_file is not None:
+            if st.button("Inject Data & Analyze", type="primary", key="inject_analyze"):
+                with st.spinner("Injecting CSV data..."):
+                    sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+                    from utils.data_loader import inject_csv_as_realtime
+
+                    ft = None if fault_type_csv == "Auto-detect" else fault_type_csv
+                    success, msg, df = inject_csv_as_realtime(csv_file, ft)
+
+                    if success:
+                        st.success(f"Data injected: {msg}")
+                        if df is not None:
+                            st.caption("Data Preview (first 5 rows)")
+                            st.dataframe(df.head(), use_container_width=True)
+                        prompt = f"Analyze the uploaded monitoring data for {ft or 'auto-detected'} fault type"
+                    else:
+                        st.error(msg)
+
+        st.info("After injecting data, you can use Text Input tab to provide more specific analysis query.")
 
     if prompt:
         _run_analysis(prompt, config)

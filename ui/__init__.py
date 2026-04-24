@@ -6,6 +6,7 @@ from .history_page import render_history_page
 from .knowledge_page import render_knowledge_page
 from .dashboard_page import render_dashboard_page
 from .feedback_page import render_feedback_page, render_feedback_widget
+from .monitoring_page import render_monitoring_page
 
 __all__ = [
     "render_sidebar",
@@ -17,4 +18,5 @@ __all__ = [
     "render_dashboard_page",
     "render_feedback_page",
     "render_feedback_widget",
+    "render_monitoring_page",
 ]
