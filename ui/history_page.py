@@ -1,46 +1,101 @@
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any
+
 import streamlit as st
-import os
-import glob
+
+from config import REPORTS_DIR
+from ui.dashboard_page import _extract_header, _extract_services
 
 
-def render_history_page():
-    """Render history reports page"""
-    st.header("Historical Analysis Reports")
-    
-    report_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "reports")
-    if os.path.exists(report_dir):
-        list_of_files = glob.glob(os.path.join(report_dir, '*.md'))
-        if list_of_files:
-            list_of_files.sort(key=os.path.getctime, reverse=True)
-            
-            st.info(f"Found {len(list_of_files)} historical reports")
-            
-            selected_report = st.selectbox(
-                "Select report to view:",
-                list_of_files,
-                format_func=lambda x: os.path.basename(x)
-            )
-            
-            if selected_report:
-                with open(selected_report, 'r', encoding='utf-8') as f:
-                    report_content = f.read()
-                
-                col1, col2 = st.columns([3, 1])
-                with col1:
-                    st.markdown("---")
-                    st.markdown(report_content)
-                with col2:
-                    st.download_button(
-                        label="Download Report",
-                        data=report_content,
-                        file_name=os.path.basename(selected_report),
-                        mime="text/markdown",
-                        width='stretch'
-                    )
-                    if st.button("Delete Report", width='stretch', type="secondary"):
-                        os.remove(selected_report)
-                        st.rerun()
+def render_history_page() -> None:
+    st.title("历史报告")
+    report_paths = sorted(REPORTS_DIR.glob("*.md"), key=lambda item: item.stat().st_mtime, reverse=True)
+    if not report_paths:
+        st.info("reports/ 目录下暂无报告。")
+        return
+
+    options = {_build_report_label(path): path for path in report_paths}
+    selected_label = st.selectbox("选择报告", list(options.keys()))
+    selected_path = options[selected_label]
+    content = selected_path.read_text(encoding="utf-8")
+    header = _extract_header(content)
+    services = _extract_services(content, header)
+
+    _render_report_summary(selected_path, header, services)
+
+    st.caption(f"文件路径：{selected_path}")
+    st.download_button(
+        "下载报告",
+        data=content,
+        file_name=selected_path.name,
+        mime="text/markdown",
+    )
+    st.markdown(content)
+
+    think_log_path = _find_matching_think_log(selected_path)
+    with st.expander("关联 Think Log", expanded=False):
+        if think_log_path is None:
+            st.info("未找到同时间戳的 think log。")
         else:
-            st.warning("No historical reports. Please run fault analysis first.")
-    else:
-        st.warning("Report directory does not exist. Please run fault analysis first.")
+            st.caption(str(think_log_path))
+            st.text_area("Think Log", value=think_log_path.read_text(encoding="utf-8"), height=360)
+
+
+
+def _render_report_summary(report_path: Path, header: dict[str, Any], services: list[str]) -> None:
+    generated_at = header.get("generated_at") or _guess_generated_at(report_path)
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("故障类型", _safe_text(header.get("fault_type")))
+    col2.metric("根因候选", _safe_text(header.get("root_cause")))
+    col3.metric("决策", _safe_text(header.get("decision")))
+    col4.metric("置信度", _safe_text(header.get("confidence")))
+
+    st.subheader("报告摘要")
+    left, right = st.columns([2, 1])
+    with left:
+        st.write(f"**分析问题**：{_safe_text(header.get('analysis_question'))}")
+        st.write(f"**生成时间**：{generated_at}")
+        st.write(f"**报告版本**：{_safe_text(header.get('report_version'))}")
+    with right:
+        st.write(f"**受影响服务**：{', '.join(services) if services else '-'}")
+        secondary = header.get("secondary_causes")
+        if isinstance(secondary, list) and secondary:
+            st.write(f"**次级根因**：{', '.join(map(str, secondary))}")
+        else:
+            st.write("**次级根因**：-")
+
+
+
+def _build_report_label(path: Path) -> str:
+    content = path.read_text(encoding="utf-8")
+    header = _extract_header(content)
+    root_cause = header.get("root_cause") or "unknown"
+    generated_at = header.get("generated_at") or _guess_generated_at(path)
+    return f"{generated_at} | {root_cause} | {path.name}"
+
+
+
+def _guess_generated_at(report_path: Path) -> str:
+    parts = report_path.stem.replace("rca_report_", "")
+    if len(parts) >= 15 and "_" in parts:
+        date_part, time_part = parts.split("_", 1)
+        if len(date_part) == 8 and len(time_part) >= 6:
+            return f"{date_part[:4]}-{date_part[4:6]}-{date_part[6:8]} {time_part[:2]}:{time_part[2:4]}:{time_part[4:6]}"
+    return report_path.name
+
+
+
+def _find_matching_think_log(report_path: Path) -> Path | None:
+    suffix = report_path.stem.replace("rca_report_", "")
+    think_log_dir = report_path.parent.parent / "think_log"
+    matches = sorted(think_log_dir.glob(f"*{suffix}.md"))
+    return matches[0] if matches else None
+
+
+
+def _safe_text(value: Any) -> str:
+    if value is None or value == "":
+        return "-"
+    return str(value)

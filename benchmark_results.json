@@ -1,0 +1,163 @@
+{
+  "benchmark_config": {
+    "csv_path": "D:\\downloads\\aiops_rca\\benchmark\\data_with_error.csv",
+    "sample_count": 3,
+    "window_size": 20,
+    "seed": 42,
+    "baseline_threshold": 3.0,
+    "candidate_windows": 4162,
+    "evaluated_windows": 3
+  },
+  "aggregate": {
+    "baseline": {
+      "samples": 3,
+      "service_hit_rate": 1.0,
+      "fault_type_hit_rate": 1.0,
+      "avg_confidence": null,
+      "decision_stop_rate": 1.0,
+      "accuracy": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0
+    },
+    "rca": {
+      "samples": 3,
+      "service_hit_rate": 0.3333,
+      "fault_type_hit_rate": 1.0,
+      "avg_confidence": 0.7833,
+      "decision_stop_rate": 1.0,
+      "accuracy": 0.3333,
+      "precision": 0.3333,
+      "recall": 0.3333,
+      "f1": 0.3333
+    }
+  },
+  "samples": [
+    {
+      "sample_id": 1,
+      "window": {
+        "start": 1685200793,
+        "end": 1685200812,
+        "start_index": 205,
+        "window_size": 20
+      },
+      "prompt": "main memory 异常，请分析根因",
+      "pseudo_ground_truth": {
+        "service": "main",
+        "fault_type": "memory",
+        "metric": "mem",
+        "anomaly_count": 2,
+        "peak": 66691072.0
+      },
+      "baseline": {
+        "service": "main",
+        "fault_type": "memory",
+        "metric": "mem",
+        "anomaly_count": 2,
+        "peak": 66691072.0,
+        "hits": {
+          "service_hit": true,
+          "fault_type_hit": true
+        },
+        "decision": "stop",
+        "confidence": null
+      },
+      "rca": {
+        "service": "frontend",
+        "fault_type": "memory",
+        "decision": "stop",
+        "confidence": 0.78,
+        "hits": {
+          "service_hit": false,
+          "fault_type_hit": true
+        },
+        "report_path": "D:\\downloads\\aiops_rca\\reports\\rca_report_20260427_112909.md",
+        "think_log_path": "D:\\downloads\\aiops_rca\\think_log\\think_log_data_with_error_20260427_112909.md"
+      }
+    },
+    {
+      "sample_id": 2,
+      "window": {
+        "start": 1685201502,
+        "end": 1685201521,
+        "start_index": 914,
+        "window_size": 20
+      },
+      "prompt": "cartservice CPU 升高，请分析根因",
+      "pseudo_ground_truth": {
+        "service": "cartservice",
+        "fault_type": "cpu",
+        "metric": "cpu",
+        "anomaly_count": 1,
+        "peak": 6.9451460885504375
+      },
+      "baseline": {
+        "service": "cartservice",
+        "fault_type": "cpu",
+        "metric": "cpu",
+        "anomaly_count": 1,
+        "peak": 6.9451460885504375,
+        "hits": {
+          "service_hit": true,
+          "fault_type_hit": true
+        },
+        "decision": "stop",
+        "confidence": null
+      },
+      "rca": {
+        "service": "cartservice",
+        "fault_type": "cpu",
+        "decision": "stop",
+        "confidence": 0.76,
+        "hits": {
+          "service_hit": true,
+          "fault_type_hit": true
+        },
+        "report_path": "D:\\downloads\\aiops_rca\\reports\\rca_report_20260427_112910.md",
+        "think_log_path": "D:\\downloads\\aiops_rca\\think_log\\think_log_data_with_error_20260427_112910.md"
+      }
+    },
+    {
+      "sample_id": 3,
+      "window": {
+        "start": 1685202850,
+        "end": 1685202869,
+        "start_index": 2262,
+        "window_size": 20
+      },
+      "prompt": "adservice memory 异常，请分析根因",
+      "pseudo_ground_truth": {
+        "service": "adservice",
+        "fault_type": "memory",
+        "metric": "mem",
+        "anomaly_count": 2,
+        "peak": 99229696.0
+      },
+      "baseline": {
+        "service": "adservice",
+        "fault_type": "memory",
+        "metric": "mem",
+        "anomaly_count": 2,
+        "peak": 99229696.0,
+        "hits": {
+          "service_hit": true,
+          "fault_type_hit": true
+        },
+        "decision": "stop",
+        "confidence": null
+      },
+      "rca": {
+        "service": "productcatalogservice",
+        "fault_type": "memory",
+        "decision": "stop",
+        "confidence": 0.81,
+        "hits": {
+          "service_hit": false,
+          "fault_type_hit": true
+        },
+        "report_path": "D:\\downloads\\aiops_rca\\reports\\rca_report_20260427_112910.md",
+        "think_log_path": "D:\\downloads\\aiops_rca\\think_log\\think_log_data_with_error_20260427_112910.md"
+      }
+    }
+  ]
+}

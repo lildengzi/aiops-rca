@@ -1,214 +1,44 @@
+from __future__ import annotations
 
 import os
-from dotenv import load_dotenv
+from pathlib import Path
+
+try:
+    from dotenv import load_dotenv
+except ModuleNotFoundError:
+    def load_dotenv() -> bool:
+        return False
 
 load_dotenv()
 
-LLM_CONFIG = {
-    "api_key": os.getenv("OPENAI_API_KEY", "9825eed2-e8d8-40a6-8fd1-cfeb016a086e"),
-    "base_url": os.getenv("OPENAI_BASE_URL", "https://ark.cn-beijing.volces.com/api/v3"),
-    "model": os.getenv("LLM_MODEL", "doubao-seed-2-0-code-preview-260215"),
-    "temperature": 0.1,
-    "max_tokens": 4096,
-}
+BASE_DIR = Path(__file__).resolve().parent
+BENCHMARK_DIR = BASE_DIR / "benchmark"
+REPORTS_DIR = BASE_DIR / os.getenv("REPORTS_DIR", "reports")
+THINK_LOG_DIR = BASE_DIR / os.getenv("THINK_LOG_DIR", "think_log")
+DOCS_DIR = BASE_DIR / "docs"
+KNOWLEDGE_BASE_DIR = BASE_DIR / os.getenv("KNOWLEDGE_BASE_DIR", "knowledge_base")
+KNOWLEDGE_DOCS_PATH = KNOWLEDGE_BASE_DIR / os.getenv("KNOWLEDGE_DOCS_FILE", "documents.json")
+FAISS_INDEX_PATH = KNOWLEDGE_BASE_DIR / os.getenv("FAISS_INDEX_DIR", "faiss_index")
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
+MAX_ITERATIONS = int(os.getenv("MAX_ITERATIONS", "3"))
+MODEL_NAME = os.getenv("MODEL_NAME", "gpt-")
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "offline")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "sk-Pz0ejAAF1TE8ef8TK601IFbURJDcAYDCD")
+OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.")
+OPENAI_TIMEOUT = float(os.getenv("OPENAI_TIMEOUT", "30"))
+OPENAI_MAX_RETRIES = int(os.getenv("OPENAI_MAX_RETRIES", "2"))
+ENABLE_LLM_REASONING = os.getenv("ENABLE_LLM_REASONING", "false").strip().lower() in {"1", "true", "yes", "on"}
+ENABLE_RAG_RETRIEVAL = os.getenv("ENABLE_RAG_RETRIEVAL", "true").strip().lower() in {"1", "true", "yes", "on"}
+DEFAULT_ZSCORE_THRESHOLD = float(os.getenv("DEFAULT_ZSCORE_THRESHOLD", "2.5"))
+DEFAULT_TOP_K_SERVICES = int(os.getenv("DEFAULT_TOP_K_SERVICES", "3"))
+DEFAULT_WINDOW_SIZE = int(os.getenv("DEFAULT_WINDOW_SIZE", "30"))
+DEFAULT_REPORT_PREFIX = os.getenv("DEFAULT_REPORT_PREFIX", "rca_report")
+KB_TOP_K = int(os.getenv("KB_TOP_K", "3"))
+EMBEDDING_PROVIDER = os.getenv("EMBEDDING_PROVIDER", "tfidf")
+EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL_NAME", "")
+EMBEDDING_BASE_URL = os.getenv("EMBEDDING_BASE_URL", OPENAI_BASE_URL)
 
-# 经验库：离线样例数据（仅用于离线参考，不驱动核心分析）
-FAULT_DATA_MAP = {
-    "cpu": os.path.join(DATA_DIR, "data1.csv"),
-    "delay": os.path.join(DATA_DIR, "data2.csv"),
-    "disk": os.path.join(DATA_DIR, "data3.csv"),
-    "loss": os.path.join(DATA_DIR, "data4.csv"),
-    "mem": os.path.join(DATA_DIR, "data5.csv"),
-}
-
-# 实时数据目录：simulator 生成的实时监测数据写入此目录
-REALTIME_DATA_DIR = os.path.join(os.path.dirname(__file__), "realtime_data")
-
-SERVICE_TOPOLOGY = {
-    "frontend": {
-        "description": "前端Web服务，接收所有用户请求",
-        "dependencies": [
-            "adservice", "cartservice", "checkoutservice",
-            "currencyservice", "productcatalogservice",
-            "recommendationservice", "shippingservice"
-        ],
-        "type": "web",
-    },
-    "cartservice": {
-        "description": "购物车服务，管理用户购物车",
-        "dependencies": ["redis"],
-        "type": "application",
-    },
-    "checkoutservice": {
-        "description": "结算服务，处理订单结算流程",
-        "dependencies": [
-            "cartservice", "currencyservice", "emailservice",
-            "paymentservice", "productcatalogservice", "shippingservice"
-        ],
-        "type": "application",
-    },
-    "recommendationservice": {
-        "description": "推荐服务，为用户提供商品推荐",
-        "dependencies": ["productcatalogservice"],
-        "type": "application",
-    },
-    "productcatalogservice": {
-        "description": "商品目录服务，管理商品信息",
-        "dependencies": [],
-        "type": "application",
-    },
-    "currencyservice": {
-        "description": "货币转换服务",
-        "dependencies": [],
-        "type": "application",
-    },
-    "paymentservice": {
-        "description": "支付服务，处理支付请求",
-        "dependencies": [],
-        "type": "application",
-    },
-    "shippingservice": {
-        "description": "物流服务，计算运费和物流信息",
-        "dependencies": [],
-        "type": "application",
-    },
-    "emailservice": {
-        "description": "邮件服务，发送订单确认邮件",
-        "dependencies": [],
-        "type": "application",
-    },
-    "adservice": {
-        "description": "广告服务，提供广告内容",
-        "dependencies": [],
-        "type": "application",
-    },
-    "redis": {
-        "description": "Redis缓存，为购物车服务提供数据存储",
-        "dependencies": [],
-        "type": "middleware",
-    },
-    "main": {
-        "description": "主节点/基础设施节点",
-        "dependencies": [],
-        "type": "infrastructure",
-    },
-}
-
-ANOMALY_CONFIG = {
-    "z_score_threshold": 3.0,       # Z-Score 异常阈值
-    "window_size": 60,              # 滑动窗口大小（秒）
-    "min_anomaly_duration": 10,     # 最小异常持续时间（秒）
-    "correlation_threshold": 0.7,   # 相关性阈值
-}
-
-WORKFLOW_CONFIG = {
-    "max_iterations": 5,            # 最大 ReAct 迭代次数
-    "convergence_threshold": 0.8,   # 收敛置信度阈值
-}
-
-DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
-
-# 经验库：离线样例数据（用于离线分析和知识参考）
-FAULT_DATA_MAP = {
-    "cpu": os.path.join(DATA_DIR, "data1.csv"),
-    "delay": os.path.join(DATA_DIR, "data2.csv"),
-    "disk": os.path.join(DATA_DIR, "data3.csv"),
-    "loss": os.path.join(DATA_DIR, "data4.csv"),
-    "mem": os.path.join(DATA_DIR, "data5.csv"),
-}
-
-# 实时数据目录：simulator 生成的实时监测数据写入此目录
-REALTIME_DATA_DIR = os.path.join(os.path.dirname(__file__), "realtime_data")
-
-
-SERVICE_TOPOLOGY = {
-    "frontend": {
-        "description": "前端Web服务，接收所有用户请求",
-        "dependencies": [
-            "adservice", "cartservice", "checkoutservice",
-            "currencyservice", "productcatalogservice",
-            "recommendationservice", "shippingservice"
-        ],
-        "type": "web",
-    },
-    "cartservice": {
-        "description": "购物车服务，管理用户购物车",
-        "dependencies": ["redis"],
-        "type": "application",
-    },
-    "checkoutservice": {
-        "description": "结算服务，处理订单结算流程",
-        "dependencies": [
-            "cartservice", "currencyservice", "emailservice",
-            "paymentservice", "productcatalogservice", "shippingservice"
-        ],
-        "type": "application",
-    },
-    "recommendationservice": {
-        "description": "推荐服务，为用户提供商品推荐",
-        "dependencies": ["productcatalogservice"],
-        "type": "application",
-    },
-    "productcatalogservice": {
-        "description": "商品目录服务，管理商品信息",
-        "dependencies": [],
-        "type": "application",
-    },
-    "currencyservice": {
-        "description": "货币转换服务",
-        "dependencies": [],
-        "type": "application",
-    },
-    "paymentservice": {
-        "description": "支付服务，处理支付请求",
-        "dependencies": [],
-        "type": "application",
-    },
-    "shippingservice": {
-        "description": "物流服务，计算运费和物流信息",
-        "dependencies": [],
-        "type": "application",
-    },
-    "emailservice": {
-        "description": "邮件服务，发送订单确认邮件",
-        "dependencies": [],
-        "type": "application",
-    },
-    "adservice": {
-        "description": "广告服务，提供广告内容",
-        "dependencies": [],
-        "type": "application",
-    },
-    "redis": {
-        "description": "Redis缓存，为购物车服务提供数据存储",
-        "dependencies": [],
-        "type": "middleware",
-    },
-    "main": {
-        "description": "主节点/基础设施节点",
-        "dependencies": [],
-        "type": "infrastructure",
-    },
-}
-
-ANOMALY_CONFIG = {
-    "z_score_threshold": 3.0,       # Z-Score 异常阈值
-    "window_size": 60,              # 滑动窗口大小（秒）
-    "min_anomaly_duration": 10,     # 最小异常持续时间（秒）
-    "correlation_threshold": 0.7,   # 相关性阈值
-}
-
-WORKFLOW_CONFIG = {
-    "max_iterations": 5,            # 最大 ReAct 迭代次数
-    "convergence_threshold": 0.8,   # 收敛置信度阈值
-}
-
-METRIC_CATEGORIES = {
-    "resource": ["cpu", "mem"],
-    "performance": ["latency", "latency-50", "latency-90"],
-    "traffic": ["load", "workload"],
-    "error": ["error"],
-}
-
+REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+THINK_LOG_DIR.mkdir(parents=True, exist_ok=True)
+DOCS_DIR.mkdir(parents=True, exist_ok=True)
+KNOWLEDGE_BASE_DIR.mkdir(parents=True, exist_ok=True)

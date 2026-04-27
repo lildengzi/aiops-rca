@@ -1,108 +1,127 @@
-"""
-拓扑感知工具 - 模拟 CMDB MCP 服务
-提供服务依赖关系、架构拓扑等信息
-"""
-import json
-from langchain_core.tools import tool
-from config import SERVICE_TOPOLOGY
+from __future__ import annotations
+
+from collections import defaultdict
+from typing import Any
+
+from utils.data_loader import CSVDataLoader
+
+SERVICE_TOPOLOGY = {
+    "frontend": {
+        "description": "前端Web服务，接收所有用户请求",
+        "dependencies": [
+            "adservice",
+            "cartservice",
+            "checkoutservice",
+            "currencyservice",
+            "productcatalogservice",
+            "recommendationservice",
+            "shippingservice",
+        ],
+        "type": "web",
+    },
+    "cartservice": {
+        "description": "购物车服务，管理用户购物车",
+        "dependencies": ["redis"],
+        "type": "application",
+    },
+    "checkoutservice": {
+        "description": "结算服务，处理订单结算流程",
+        "dependencies": [
+            "cartservice",
+            "currencyservice",
+            "emailservice",
+            "paymentservice",
+            "productcatalogservice",
+            "shippingservice",
+        ],
+        "type": "application",
+    },
+    "recommendationservice": {
+        "description": "推荐服务，为用户提供商品推荐",
+        "dependencies": ["productcatalogservice"],
+        "type": "application",
+    },
+    "productcatalogservice": {
+        "description": "商品目录服务，管理商品信息",
+        "dependencies": [],
+        "type": "application",
+    },
+    "currencyservice": {
+        "description": "货币转换服务",
+        "dependencies": [],
+        "type": "application",
+    },
+    "paymentservice": {
+        "description": "支付服务，处理支付请求",
+        "dependencies": [],
+        "type": "application",
+    },
+    "shippingservice": {
+        "description": "物流服务，计算运费和物流信息",
+        "dependencies": [],
+        "type": "application",
+    },
+    "emailservice": {
+        "description": "邮件服务，发送订单确认邮件",
+        "dependencies": [],
+        "type": "application",
+    },
+    "adservice": {
+        "description": "广告服务，提供广告内容",
+        "dependencies": [],
+        "type": "application",
+    },
+    "redis": {
+        "description": "Redis缓存，为购物车服务提供数据存储",
+        "dependencies": [],
+        "type": "middleware",
+    },
+    "main": {
+        "description": "主节点/基础设施节点",
+        "dependencies": [],
+        "type": "infrastructure",
+    },
+}
 
 
-@tool
-def lookup_service_topology(service_name: str) -> str:
-    """\brief 查询指定服务的拓扑信息（依赖关系与服务描述）
-    \param service_name 服务名称
-    \return JSON 字符串，包含:
-        - description: 服务描述
-        - type: 服务类型
-        - dependencies: 下游依赖服务列表
-        - upstream_services: 上游调用方列表
-        - 或错误信息（当服务不在 CMDB 时）"""
-    if service_name not in SERVICE_TOPOLOGY:
-        return json.dumps({
-            "status": "failure",
-            "error_message": f"服务 {service_name} 不在CMDB中",
-            "available_services": list(SERVICE_TOPOLOGY.keys()),
-        })
+class TopologyToolbox:
+    def __init__(self, loader: CSVDataLoader):
+        self.loader = loader
 
-    info = SERVICE_TOPOLOGY[service_name]
-    # 同时获取上游(谁依赖我)
-    upstream = [
-        svc for svc, detail in SERVICE_TOPOLOGY.items()
-        if service_name in detail.get("dependencies", [])
-    ]
+    def get_topology_details(self) -> dict[str, dict[str, Any]]:
+        metadata = self.loader.get_metadata()
+        services = metadata["services"]
+        topology = {
+            service: {
+                "description": details["description"],
+                "dependencies": list(details["dependencies"]),
+                "type": details["type"],
+            }
+            for service, details in SERVICE_TOPOLOGY.items()
+        }
+        for service in services:
+            topology.setdefault(
+                service,
+                {
+                    "description": f"Discovered from CSV telemetry: {service}",
+                    "dependencies": [],
+                    "type": "application",
+                },
+            )
+        return topology
 
-    return json.dumps({
-        "status": "success",
-        "service": service_name,
-        "description": info["description"],
-        "type": info["type"],
-        "dependencies": info["dependencies"],
-        "upstream_services": upstream,
-    }, ensure_ascii=False)
+    def get_full_topology(self) -> dict[str, list[str]]:
+        topology_details = self.get_topology_details()
+        return {
+            service: list(details.get("dependencies", []))
+            for service, details in topology_details.items()
+        }
 
-
-@tool
-def get_full_topology() -> str:
-    """\brief 获取完整的系统架构拓扑（所有服务及其依赖关系）
-    \details 用于整体架构理解和故障传播路径分析
-    \return JSON 字符串，包含 total_services 和 topology 列表"""
-    topology = []
-    for svc, info in SERVICE_TOPOLOGY.items():
-        upstream = [s for s, d in SERVICE_TOPOLOGY.items()
-                    if svc in d.get("dependencies", [])]
-        topology.append({
-            "service": svc,
-            "type": info["type"],
-            "description": info["description"],
-            "dependencies": info["dependencies"],
-            "upstream": upstream,
-        })
-    return json.dumps({
-        "status": "success",
-        "total_services": len(topology),
-        "topology": topology,
-    }, ensure_ascii=False)
-
-
-@tool
-def find_dependency_path(source: str, target: str) -> str:
-    """\brief 查找两个服务之间的依赖路径（广度优先搜索 BFS）
-    \param source 起始服务名
-    \param target 目标服务名
-    \return JSON 字符串，包含:
-        - path: 依赖路径列表（服务名序列）
-        - path_length: 路径长度
-        - message: 未找到路径时的提示信息"""
-    if source not in SERVICE_TOPOLOGY or target not in SERVICE_TOPOLOGY:
-        return json.dumps({
-            "status": "failure",
-            "error_message": "服务不存在",
-        })
-
-    from collections import deque
-    visited = set()
-    queue = deque([(source, [source])])
-
-    while queue:
-        current, path = queue.popleft()
-        if current == target:
-            return json.dumps({
-                "status": "success",
-                "path": path,
-                "path_length": len(path),
-            })
-        if current in visited:
-            continue
-        visited.add(current)
-        for dep in SERVICE_TOPOLOGY.get(current, {}).get("dependencies", []):
-            if dep not in visited:
-                queue.append((dep, path + [dep]))
-
-    return json.dumps({
-        "status": "success",
-        "path": [],
-        "message": f"未找到从 {source} 到 {target} 的依赖路径",
-    })
-
-
-TOPOLOGY_TOOLS = [lookup_service_topology, get_full_topology, find_dependency_path]
+    def reverse_topology(self) -> dict[str, list[str]]:
+        topology = self.get_full_topology()
+        reversed_graph: dict[str, list[str]] = defaultdict(list)
+        for source, targets in topology.items():
+            reversed_graph.setdefault(source, [])
+            for target in targets:
+                reversed_graph[target].append(source)
+        return dict(reversed_graph)

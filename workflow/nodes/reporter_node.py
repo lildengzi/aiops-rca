@@ -1,45 +1,24 @@
-"""
-运营专家节点实现 - 增强版，仅基于分析师结构化输出生成报告
-"""
-from datetime import datetime
-from langchain_core.messages import HumanMessage, SystemMessage
+from __future__ import annotations
 
-from workflow.utils import _create_llm
-from agents.reporter_agent import get_reporter_prompt
+from agents.reporter_agent import ReporterAgent
+from workflow.graph_state import GraphState
 from workflow.state import RCAState
+from workflow.utils import record_node_event
 
 
-def reporter_node(state: RCAState) -> dict:
-    """
-    运营专家节点：仅基于分析师结构化输出生成报告，不自行拔高结论。
-    """
-    llm = _create_llm()
-    ts = datetime.now().strftime("%H:%M:%S")
+def reporter_node(state: RCAState, agent: ReporterAgent) -> dict:
+    result = agent.run(state)
+    state.report_path = result.get("report_path")
+    state.report_header = result.get("report_header") or {}
+    return record_node_event(state, agent.name, result)
 
-    # 仅使用分析师结构化输出和观测证据（不自行拔高）
-    analyst_output = state.get("analyst_output")
-    metric_analysis = state.get("metric_analysis")
-    log_analysis = state.get("log_analysis")
-    trace_analysis = state.get("trace_analysis")
 
-    # 构建提示词（仅传入分析师输出和观测证据）
-    system_prompt = get_reporter_prompt(
-        analyst_output=analyst_output,
-        metric_analysis=metric_analysis,
-        log_analysis=log_analysis,
-        trace_analysis=trace_analysis,
-    )
-
-    messages = [
-        SystemMessage(content=system_prompt),
-        HumanMessage(content="请严格基于分析师仲裁结果生成报告，不得添加或拔高结论。"),
-    ]
-
-    response = llm.invoke(messages)
-    report = response.content
-    log_entry = f"[{ts}] 运营专家 - 报告生成完成"
-
+def reporter_graph_node(graph_state: GraphState, agent: ReporterAgent) -> GraphState:
+    state = RCAState.from_graph_state(graph_state)
+    result = reporter_node(state, agent)
     return {
-        "final_report": report,
-        "thinking_log": [log_entry],
+        "report_path": result.get("report_path"),
+        "report_header": state.report_header,
+        "think_log_path": state.think_log_path,
+        "node_history": state.node_history[-1:],
     }

@@ -1,259 +1,362 @@
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any
+
 import streamlit as st
-import subprocess
-import sys
-import os
-import glob
-import time
+
+from ui.image_input import render_image_input
+from ui.voice_input import render_voice_input
+from workflow.orchestrator import RCAOrchestrator
 
 
+def render_analysis_page() -> None:
+    st.title("故障分析")
+    st.caption("输入故障描述、补充语音或图片证据，并直接调用现有 RCA 工作流。")
 
-AGENT_ORDER = ["故障类型检测", "运维专家", "指标分析专家", "日志分析专家", "链路分析专家", "数据汇总", "值班长", "运营专家"]
-
-
-def render_analysis_page(config):
-    """渲染故障分析页面"""
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
-    if "latest_report_context" not in st.session_state:
-        st.session_state.latest_report_context = None
-
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
-
-    prompt = None
-    
-    input_tab1, input_tab2, input_tab3, input_tab4 = st.tabs(["Text Input", "Voice Input", "Image Upload", "CSV Data"])
-    
-    with input_tab1:
-        prompt = st.chat_input("例如：过去1小时frontend服务CPU飙升，请分析根因")
-    
-    with input_tab2:
-        from ui.voice_input import render_voice_input
-        voice_result = render_voice_input()
-        if voice_result:
-            prompt = voice_result
-    
-    with input_tab3:
-        from ui.image_input import render_image_input
-        image_result = render_image_input()
-        if image_result:
-            prompt = image_result
-
-    with input_tab4:
-        st.markdown("**Upload CSV Data for Analysis**")
-        st.markdown("""
-        **CSV 格式要求：**
-        - 时间列必须命名为 `time`（不支持 timestamp/ts 等别名）
-        - 其他列格式为 `{service}_{metric}`，例如：`frontend_cpu`、`checkoutservice_latency_p99`
-        - `service` 必须来自系统拓扑中的服务名（frontend/cartservice/checkoutservice 等）
-        - `metric` 名称可动态扩展，不要求固定集合（如 cpu/mem/latency 等）
-        - 数据可只包含部分服务和部分指标，不必覆盖全部服务
-        - 上传后系统会自动识别当前数据中的服务与指标
-        """)
-
-        csv_file = st.file_uploader(
-            "Choose CSV file",
-            type="csv",
-            key="analysis_csv_uploader",
-            help="CSV must contain 'time' column and columns like 'service_metric'"
-        )
-
-        fault_type_csv = st.selectbox(
-            "Data label (optional)",
-            ["Auto-detect"] + ["cpu", "delay", "disk", "loss", "mem", "unknown"],
-            key="analysis_fault_type",
-            help="仅作为缓存标签，不影响数据解析。Auto-detect 将自动推断。"
-        )
-
-        if csv_file is not None:
-            if st.button("Inject Data & Analyze", type="primary", key="inject_analyze"):
-                with st.spinner("Injecting CSV data..."):
-                    sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-                    from utils.data_loader import inject_csv_as_realtime
-
-                    ft = None if fault_type_csv == "Auto-detect" else fault_type_csv
-                    success, msg, df = inject_csv_as_realtime(csv_file, ft)
-
-                    if success:
-                        st.success(f"Data injected: {msg}")
-                        if df is not None:
-                            st.caption("Data Preview (first 5 rows)")
-                            st.dataframe(df.head(), use_container_width=True)
-                        prompt = f"Analyze the uploaded monitoring data for {ft or 'auto-detected'} fault type"
-                    else:
-                        st.error(msg)
-
-        st.info("After injecting data, you can use Text Input tab to provide more specific analysis query.")
-
-    if prompt:
-        _run_analysis(prompt, config)
-    elif st.session_state.latest_report_context:
-        _render_persisted_feedback_widget()
+    _render_current_dataset_summary()
+    _render_input_panel()
+    _render_result_panel()
 
 
-def _render_persisted_feedback_widget():
-    """在 Streamlit 重跑后继续显示当前报告对应的反馈组件。"""
-    report_context = st.session_state.get("latest_report_context")
-    if not report_context:
+def _render_current_dataset_summary() -> None:
+    csv_path = st.session_state.get("csv_path", "")
+    uploaded_name = st.session_state.get("uploaded_csv_name")
+    col1, col2 = st.columns([3, 2])
+    with col1:
+        st.info(f"当前数据集：{csv_path or '未选择'}")
+    with col2:
+        label = uploaded_name or (Path(csv_path).name if csv_path else "-")
+        st.caption(f"当前文件：{label}")
+
+
+def _render_input_panel() -> None:
+    multimodal_text = _build_multimodal_context()
+    default_input = st.session_state.get("analysis_input", "")
+    placeholder = "例如：frontend 延迟升高，怀疑 cartservice 或其上游依赖异常"
+    user_input = st.text_area(
+        "故障描述",
+        value=default_input,
+        height=160,
+        placeholder=placeholder,
+        key="analysis_input",
+    )
+
+    if multimodal_text:
+        st.caption("已检测到多模态补充内容，可一键并入故障描述。")
+        if st.button("将语音/OCR 结果追加到故障描述", key="merge_multimodal_context"):
+            merged = _merge_user_input(user_input, multimodal_text)
+            st.session_state.analysis_input = merged
+            st.rerun()
+
+    col1, col2 = st.columns(2)
+    with col1:
+        start_raw = st.text_input("起始时间戳（可选）", value=st.session_state.get("analysis_start_raw", ""), key="analysis_start_raw")
+    with col2:
+        end_raw = st.text_input("结束时间戳（可选）", value=st.session_state.get("analysis_end_raw", ""), key="analysis_end_raw")
+
+    start = _parse_optional_int(start_raw)
+    end = _parse_optional_int(end_raw)
+    if start_raw.strip() and start is None:
+        st.warning("起始时间戳需为整数。")
+    if end_raw.strip() and end is None:
+        st.warning("结束时间戳需为整数。")
+    if start is not None and end is not None and start > end:
+        st.warning("起始时间戳不能大于结束时间戳。")
+
+    with st.expander("多模态补充输入", expanded=False):
+        render_voice_input()
+        _render_multimodal_result("voice_result", "语音转写")
+        st.divider()
+        render_image_input()
+        _render_multimodal_result("image_result", "图片解析")
+
+    if st.button("开始分析", type="primary"):
+        _run_analysis(user_input=st.session_state.get("analysis_input", ""), start_raw=start_raw, end_raw=end_raw)
+
+
+def _run_analysis(user_input: str, start_raw: str, end_raw: str) -> None:
+    csv_path = st.session_state.get("csv_path", "")
+    if not csv_path:
+        st.error("请先在侧边栏填写或上传 CSV 文件。")
+        return
+    if not user_input.strip():
+        st.error("请输入故障描述。")
         return
 
-    st.markdown("---")
-    st.caption(f"Current report: {report_context['report_name']}")
+    start = _parse_optional_int(start_raw)
+    end = _parse_optional_int(end_raw)
+    if start_raw.strip() and start is None:
+        st.error("起始时间戳必须为整数。")
+        return
+    if end_raw.strip() and end is None:
+        st.error("结束时间戳必须为整数。")
+        return
+    if start is not None and end is not None and start > end:
+        st.error("起始时间戳不能大于结束时间戳。")
+        return
 
-    from .feedback_page import render_feedback_widget
-    render_feedback_widget(report_context["fault_id"], report_context["original_diagnosis"])
-
-
-def _run_analysis(prompt, config):
-    """执行故障分析"""
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-        st.markdown(prompt)
-
-    with st.chat_message("assistant"):
-        st.info("Fault type will be auto-detected from data analysis")
-        
-        cmd = [sys.executable, "main.py", "--query", prompt, "--max-iter", str(config["max_iter"])]
-        if not config["full_analysis"]:
-            cmd.append("--disable-full-analysis")
-        
-        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, shell=False)
-
-        col_progress, col_logs = st.columns([1, 2])
-        
-        with col_progress:
-            progress_bar = st.progress(0)
-            status_text = st.empty()
-            completed_count = 0
-            total_agents = len(AGENT_ORDER)
-            agent_progress = {}
-        
-        with col_logs:
-            log_container = st.empty()
-            log_container.code("等待分析启动...", language="text")
-        
-        full_output = ""
-        start_time = time.time()
-
-        while True:
-            line = process.stdout.readline()
-            if line:
-                full_output += line
-                
-                if "[完成]" in line and "任务完成" in line:
-                    for agent_name in AGENT_ORDER:
-                        if agent_name in line and agent_name not in agent_progress:
-                            agent_progress[agent_name] = True
-                            completed_count += 1
-                            break
-                
-                with col_progress:
-                    progress_percent = min(int((completed_count / total_agents) * 100), 99)
-                    progress_bar.progress(progress_percent)
-                    
-                    status_info = "Running...\n\n"
-                    status_info += "**智能体状态:**\n"
-                    for agent in AGENT_ORDER:
-                        if agent in agent_progress:
-                            status_info += f"✅ {agent}\n"
-                        else:
-                            status_info += f"⏳ {agent}\n"
-                    
-                    current_agent = AGENT_ORDER[completed_count] if completed_count < total_agents else None
-                    if current_agent:
-                        status_info += f"\n**正在执行:**\n{current_agent}..."
-                    else:
-                        status_info += f"\n完成: {completed_count}/{total_agents}"
-                    
-                    status_text.markdown(status_info)
-                
-                with col_logs:
-                    log_container.code(full_output[-5000:], language="text")
-            else:
-                if process.poll() is not None:
-                    break
-                time.sleep(0.05)
-
-        returncode = process.wait()
-        
-        with col_progress:
-            progress_bar.progress(100)
-            status_text.markdown("✅ 分析完成!")
-        
-        with col_logs:
-            log_container.code(full_output, language="text")
-        
-        if returncode != 0:
-            st.error(f"⚠️ 分析进程异常退出，返回码: {returncode}")
-            with st.expander("View Error Log", expanded=True):
-                st.code(full_output, language="text")
-            st.session_state.messages.append({"role": "assistant", "content": "❌ 分析执行失败，请查看错误日志。"})
-            st.stop()
-
-        _show_report(start_time, full_output, col_progress, col_logs)
-
-
-def _show_report(start_time, full_output, col_progress=None, col_logs=None):
-    """展示分析报告"""
-    if col_progress:
-        col_progress.empty()
-    
-    st.caption("Analysis Log")
-    st.code(full_output, language="text")
-    
-    report_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "reports")
-    latest_report = None
-    
-    if os.path.exists(report_dir):
-        list_of_files = glob.glob(os.path.join(report_dir, '*.md'))
-        new_reports = [f for f in list_of_files if os.path.getctime(f) > start_time]
-        
-        if new_reports:
-            latest_report = max(new_reports, key=os.path.getctime)
-        else:
-            new_reports = [f for f in list_of_files if os.path.getctime(f) > start_time - 2]
-            if new_reports:
-                latest_report = max(new_reports, key=os.path.getctime)
-    
-    if latest_report:
-        with st.expander("View Raw Log", expanded=False):
-            st.code(full_output)
-        
-        st.success(f"✅ 根因分析报告已生成：`{os.path.basename(latest_report)}`")
-        
-        with open(latest_report, 'r', encoding='utf-8') as f:
-            report_content = f.read()
-        
-        st.markdown("---")
-        st.markdown(report_content)
-        
-        st.download_button(
-            label="Download Report",
-            data=report_content,
-            file_name=os.path.basename(latest_report),
-            mime="text/markdown",
-            width='stretch'
-        )
-        
-        st.session_state.messages.append({"role": "assistant", "content": report_content})
-        
-        fault_id = os.path.basename(latest_report).replace(".md", "")
-        st.session_state.latest_report_context = {
-            "fault_id": fault_id,
-            "original_diagnosis": report_content[:500],
-            "report_name": os.path.basename(latest_report),
+    with st.spinner("正在执行多 Agent 根因分析..."):
+        orchestrator = RCAOrchestrator(csv_path=csv_path)
+        state = orchestrator.run_investigation(user_input=user_input.strip(), start=start, end=end)
+        st.session_state.analysis_result = {
+            "user_input": state.user_input,
+            "csv_path": state.csv_path,
+            "start": state.start,
+            "end": state.end,
+            "dataset_summary": state.dataset_summary,
+            "detected_fault": state.detected_fault,
+            "plan": state.plan,
+            "evidence": state.evidence,
+            "decisions": state.decisions,
+            "final_result": state.final_result,
+            "report_path": state.report_path,
+            "think_log_path": state.think_log_path,
+            "knowledge_hits": state.knowledge_hits,
+            "node_history": state.node_history,
         }
 
-        from .feedback_page import render_feedback_widget
-        render_feedback_widget(fault_id, report_content[:500])
+
+def _render_result_panel() -> None:
+    result = st.session_state.get("analysis_result")
+    if not result:
+        st.info("运行一次分析后，这里会显示结论摘要、服务证据、报告预览和 think log。")
+        return
+
+    final_result = result.get("final_result", {})
+    ranked_services = final_result.get("ranked_services") or []
+    knowledge_hits = result.get("knowledge_hits") or []
+    evidence = result.get("evidence") or {}
+    evidence_matrix = final_result.get("evidence_matrix") or []
+    primary_root_cause = final_result.get("primary_root_cause") or final_result.get("root_cause")
+    symptom_service = final_result.get("symptom_service")
+    recommendation_tiers = final_result.get("recommendation_tiers") or {}
+    propagation_summary = final_result.get("propagation_summary") or {}
+    excluded_hypotheses = final_result.get("excluded_hypotheses") or []
+
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("主根因", _safe_text(primary_root_cause))
+    col2.metric("表象服务", _safe_text(symptom_service))
+    col3.metric("决策 / 置信度", f"{_safe_text(final_result.get('decision'))} / {_safe_text(final_result.get('confidence'))}")
+    col4.metric("证据覆盖", _format_evidence_coverage(evidence_matrix, evidence))
+
+    st.subheader("结论摘要")
+    col1, col2 = st.columns([2, 1])
+    with col1:
+        st.markdown("**主根因判断**")
+        st.write(f"- 主根因候选：`{_safe_text(primary_root_cause)}`")
+        st.write(f"- 表象服务：`{_safe_text(symptom_service)}`")
+        secondary_root_causes = final_result.get("secondary_root_causes") or final_result.get("secondary_causes") or []
+        st.write(f"- 次级根因/放大点：{_format_list(secondary_root_causes)}")
+        propagation_lines = propagation_summary.get("summary_lines") or []
+        if propagation_lines:
+            st.markdown("**传播判断**")
+            for line in propagation_lines[:3]:
+                st.write(f"- {line}")
+        if excluded_hypotheses:
+            st.markdown("**排除项与反证**")
+            for item in excluded_hypotheses[:3]:
+                st.write(f"- {item.get('hypothesis', '-')}：{item.get('reason', '-')}")
+    with col2:
+        st.subheader("分析上下文")
+        st.write(f"**数据集**：`{result.get('csv_path') or '-'}`")
+        st.write(f"**时间范围**：{_format_time_range(result.get('start'), result.get('end'))}")
+        fault_types = (result.get("detected_fault") or {}).get("fault_types") or []
+        st.write(f"**检测故障类型**：{', '.join(map(str, fault_types)) if fault_types else '-'}")
+
+    st.subheader("报告预览")
+    report_path = result.get("report_path")
+    report_content = _read_text(report_path)
+    if report_content:
+        st.markdown(report_content)
     else:
-        st.error("❌ 分析执行完成但未生成报告文件")
-        with st.expander("View Full Log", expanded=True):
-            st.code(full_output, language="text")
-        st.info("可能的原因：\n"
-                "1. LLM API 调用失败或超时\n"
-                "2. 工作流执行异常中断\n"
-                "3. 报告保存时发生错误\n"
-                "4. 迭代过程未达到收敛条件")
-        st.session_state.messages.append({"role": "assistant", "content": "❌ 分析完成但未生成报告，请查看日志。"})
+        st.info("当前没有可预览的报告内容。")
+
+    if recommendation_tiers or final_result.get("recommended_actions"):
+        st.subheader("建议动作")
+        _render_recommendation_tiers(recommendation_tiers, final_result.get("recommended_actions") or [])
+
+    if ranked_services:
+        st.subheader("服务排序与角色判断")
+        st.dataframe(ranked_services, use_container_width=True)
+
+    st.subheader("节点执行过程")
+    _render_node_history(result.get("node_history") or [])
+
+    with st.expander("查看原始结论 JSON", expanded=False):
+        st.json(final_result)
+
+    if knowledge_hits:
+        with st.expander("知识库命中", expanded=False):
+            st.dataframe(knowledge_hits, use_container_width=True)
+
+    think_log_path = result.get("think_log_path")
+    think_log_content = _read_text(think_log_path)
+    if think_log_content:
+        with st.expander("Think Log", expanded=False):
+            st.text_area("过程记录", value=think_log_content, height=360)
+
+    with st.expander("聚合证据", expanded=False):
+        st.json(evidence)
+
+
+
+def _render_multimodal_result(session_key: str, title: str) -> None:
+    result = st.session_state.get(session_key)
+    if not result:
+        return
+    st.caption(title)
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        st.info(result.get("message") or "")
+        if result.get("provider"):
+            st.caption(f"来源：{result['provider']}")
+    with col2:
+        if st.button(f"写入描述", key=f"append_{session_key}"):
+            merged = _merge_user_input(st.session_state.get("analysis_input", ""), result.get("text", ""))
+            st.session_state.analysis_input = merged
+            st.rerun()
+    if result.get("text"):
+        st.text_area(f"{title}内容", value=result["text"], height=120, key=f"{session_key}_text")
+
+
+
+def _render_node_history(entries: list[dict[str, Any]]) -> None:
+    if not entries:
+        st.info("当前没有节点执行记录。")
+        return
+
+    for entry in entries:
+        node = entry.get("node") or "unknown"
+        iteration = entry.get("iteration")
+        timestamp = entry.get("timestamp") or "-"
+        payload = entry.get("payload") or {}
+        label = f"[{timestamp}] {node}"
+        if iteration is not None:
+            label += f" · iteration {iteration}"
+        with st.expander(label, expanded=node in {"analyst", "reporter"}):
+            if isinstance(payload, dict):
+                summary = _summarize_payload(payload)
+                if summary:
+                    for line in summary:
+                        st.write(f"- {line}")
+            st.json(payload)
+
+
+
+def _summarize_payload(payload: dict[str, Any]) -> list[str]:
+    lines: list[str] = []
+    if payload.get("root_cause"):
+        lines.append(f"根因候选：{payload['root_cause']}")
+    if payload.get("decision"):
+        lines.append(f"决策：{payload['decision']}")
+    if payload.get("confidence") is not None:
+        lines.append(f"置信度：{payload['confidence']}")
+    if payload.get("metric_count") is not None:
+        lines.append(f"指标证据数：{payload['metric_count']}")
+    if payload.get("log_count") is not None:
+        lines.append(f"日志证据数：{payload['log_count']}")
+    if payload.get("trace_count") is not None:
+        lines.append(f"调用链证据数：{payload['trace_count']}")
+    if payload.get("selected_services"):
+        lines.append(f"聚焦服务：{', '.join(map(str, payload['selected_services']))}")
+    return lines
+
+
+
+def _build_multimodal_context() -> str:
+    parts: list[str] = []
+    for key, label in (("voice_result", "语音转写"), ("image_result", "图片解析")):
+        result = st.session_state.get(key) or {}
+        text = str(result.get("text") or "").strip()
+        if text:
+            parts.append(f"[{label}]\n{text}")
+    return "\n\n".join(parts)
+
+
+
+def _merge_user_input(user_input: str, addition: str) -> str:
+    base = user_input.strip()
+    extra = addition.strip()
+    if not extra:
+        return base
+    if not base:
+        return extra
+    if extra in base:
+        return base
+    return f"{base}\n\n补充证据：\n{extra}"
+
+
+
+def _format_time_range(start: Any, end: Any) -> str:
+    if start is None and end is None:
+        return "全量时间窗口"
+    return f"{start if start is not None else '-'} ~ {end if end is not None else '-'}"
+
+
+
+def _parse_optional_int(value: str) -> int | None:
+    stripped = value.strip()
+    if not stripped:
+        return None
+    try:
+        return int(stripped)
+    except ValueError:
+        return None
+
+
+
+def _safe_text(value: Any) -> str:
+    if value is None or value == "":
+        return "-"
+    return str(value)
+
+
+
+def _format_list(items: list[Any]) -> str:
+    values = [str(item) for item in items if str(item).strip()]
+    return ", ".join(values) if values else "-"
+
+
+
+def _format_evidence_coverage(evidence_matrix: list[dict[str, Any]], evidence: dict[str, Any]) -> str:
+    dimensions: list[str] = []
+    if any(bool(item.get("metric")) for item in evidence_matrix if isinstance(item, dict)) or evidence.get("metrics"):
+        dimensions.append("metric")
+    if any(bool(item.get("log")) for item in evidence_matrix if isinstance(item, dict)) or evidence.get("logs"):
+        dimensions.append("log")
+    if any(bool(item.get("trace")) for item in evidence_matrix if isinstance(item, dict)) or evidence.get("traces"):
+        dimensions.append("trace")
+    return f"{len(dimensions)} 维 ({'/'.join(dimensions)})" if dimensions else "0 维"
+
+
+
+def _render_recommendation_tiers(recommendation_tiers: dict[str, Any], fallback_actions: list[str]) -> None:
+    immediate = recommendation_tiers.get("immediate") or []
+    verification = recommendation_tiers.get("verification") or []
+    hardening = recommendation_tiers.get("hardening") or []
+    if immediate:
+        st.markdown("**立即止血**")
+        for item in immediate:
+            st.write(f"- {item}")
+    if verification:
+        st.markdown("**补充验证**")
+        for item in verification:
+            st.write(f"- {item}")
+    if hardening:
+        st.markdown("**架构加固**")
+        for item in hardening:
+            st.write(f"- {item}")
+    if not (immediate or verification or hardening):
+        for item in fallback_actions:
+            st.write(f"- {item}")
+
+
+
+def _read_text(path_value: str | None) -> str:
+    if not path_value:
+        return ""
+    path = Path(path_value)
+    if not path.exists():
+        return ""
+    return path.read_text(encoding="utf-8")

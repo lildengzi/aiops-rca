@@ -1,0 +1,1120 @@
+[
+  {
+    "title": "adservice latency anomaly",
+    "content": "故障案例：服务 adservice 出现 latency 异常。\n症状摘要：adservice 在 1685200596~1685204496 期间 latency 指标显著异常，峰值达到 0.004925，疑似存在与当前时间窗重合的资源或依赖故障信号\n关键指标：latency，峰值 0.004925，异常窗口 1685200596~1685204496。\n候选角色：symptom_or_propagated。\n历史推断根因：adservice request latency spike。\n建议动作：检查慢调用、下游依赖延迟和线程池阻塞，必要时做链路回放分析。",
+    "service": "adservice",
+    "fault_type": "latency",
+    "root_cause": "adservice request latency spike",
+    "solution": "检查慢调用、下游依赖延迟和线程池阻塞，必要时做链路回放分析。",
+    "source": "D:/downloads/aiops_rca/benchmark/data_with_error.csv",
+    "tags": [
+      "adservice",
+      "latency",
+      "latency",
+      "symptom_or_propagated"
+    ],
+    "metadata": {
+      "metric": "latency",
+      "peak_value": 0.0049245283018867,
+      "window_start": 1685200596,
+      "window_end": 1685204496,
+      "anomaly_count": 44,
+      "symptom_summary": "adservice 在 1685200596~1685204496 期间 latency 指标显著异常，峰值达到 0.004925，疑似存在与当前时间窗重合的资源或依赖故障信号",
+      "evidence_type": "metric_pattern",
+      "candidate_role": "symptom_or_propagated"
+    },
+    "document_id": "199f7338-b4c4-4b6f-b713-6f21baf4eef6"
+  },
+  {
+    "title": "adservice load anomaly",
+    "content": "故障案例：服务 adservice 出现 load 异常。\n症状摘要：adservice 在 1685200590~1685204744 期间 load 指标显著异常，峰值达到 184.000000，疑似存在与当前时间窗重合的资源或依赖故障信号\n关键指标：load，峰值 184.000000，异常窗口 1685200590~1685204744。\n候选角色：origin_candidate。\n历史推断根因：adservice traffic load spike。\n建议动作：检查突发请求、上游重试和依赖抖动，评估限流与扩容方案。",
+    "service": "adservice",
+    "fault_type": "load",
+    "root_cause": "adservice traffic load spike",
+    "solution": "检查突发请求、上游重试和依赖抖动，评估限流与扩容方案。",
+    "source": "D:/downloads/aiops_rca/benchmark/data_with_error.csv",
+    "tags": [
+      "adservice",
+      "load",
+      "load",
+      "origin_candidate"
+    ],
+    "metadata": {
+      "metric": "load",
+      "peak_value": 184.0,
+      "window_start": 1685200590,
+      "window_end": 1685204744,
+      "anomaly_count": 181,
+      "symptom_summary": "adservice 在 1685200590~1685204744 期间 load 指标显著异常，峰值达到 184.000000，疑似存在与当前时间窗重合的资源或依赖故障信号",
+      "evidence_type": "metric_pattern",
+      "candidate_role": "origin_candidate"
+    },
+    "document_id": "38ee0fc8-1be9-4ac9-8eb7-d172d936d563"
+  },
+  {
+    "title": "cartservice cpu anomaly",
+    "content": "故障案例：服务 cartservice 出现 cpu 异常。\n症状摘要：cartservice 在 1685200608~1685204597 期间 cpu 指标显著异常，峰值达到 7.663447，疑似存在与当前时间窗重合的资源或依赖故障信号\n关键指标：cpu，峰值 7.663447，异常窗口 1685200608~1685204597。\n候选角色：origin_candidate。\n历史推断根因：cartservice CPU saturation。\n建议动作：检查异常流量、热点请求和服务实例 CPU 饱和情况，必要时扩容或回滚最近变更。",
+    "service": "cartservice",
+    "fault_type": "cpu",
+    "root_cause": "cartservice CPU saturation",
+    "solution": "检查异常流量、热点请求和服务实例 CPU 饱和情况，必要时扩容或回滚最近变更。",
+    "source": "D:/downloads/aiops_rca/benchmark/data_with_error.csv",
+    "tags": [
+      "cartservice",
+      "cpu",
+      "cpu",
+      "origin_candidate"
+    ],
+    "metadata": {
+      "metric": "cpu",
+      "peak_value": 7.663446841920075,
+      "window_start": 1685200608,
+      "window_end": 1685204597,
+      "anomaly_count": 22,
+      "symptom_summary": "cartservice 在 1685200608~1685204597 期间 cpu 指标显著异常，峰值达到 7.663447，疑似存在与当前时间窗重合的资源或依赖故障信号",
+      "evidence_type": "metric_pattern",
+      "candidate_role": "origin_candidate"
+    },
+    "document_id": "09d3f007-cb2b-4b4e-9b10-83b52dd53693"
+  },
+  {
+    "title": "cartservice latency anomaly",
+    "content": "故障案例：服务 cartservice 出现 latency 异常。\n症状摘要：cartservice 在 1685200591~1685204397 期间 latency 指标显著异常，峰值达到 0.211591，疑似存在与当前时间窗重合的资源或依赖故障信号\n关键指标：latency，峰值 0.211591，异常窗口 1685200591~1685204397。\n候选角色：symptom_or_propagated。\n历史推断根因：cartservice request latency spike。\n建议动作：检查慢调用、下游依赖延迟和线程池阻塞，必要时做链路回放分析。",
+    "service": "cartservice",
+    "fault_type": "latency",
+    "root_cause": "cartservice request latency spike",
+    "solution": "检查慢调用、下游依赖延迟和线程池阻塞，必要时做链路回放分析。",
+    "source": "D:/downloads/aiops_rca/benchmark/data_with_error.csv",
+    "tags": [
+      "cartservice",
+      "latency",
+      "latency",
+      "symptom_or_propagated"
+    ],
+    "metadata": {
+      "metric": "latency",
+      "peak_value": 0.2115909090909088,
+      "window_start": 1685200591,
+      "window_end": 1685204397,
+      "anomaly_count": 85,
+      "symptom_summary": "cartservice 在 1685200591~1685204397 期间 latency 指标显著异常，峰值达到 0.211591，疑似存在与当前时间窗重合的资源或依赖故障信号",
+      "evidence_type": "metric_pattern",
+      "candidate_role": "symptom_or_propagated"
+    },
+    "document_id": "d4e58e5b-e369-43f2-9072-e0bc8d75970e"
+  },
+  {
+    "title": "cartservice load anomaly",
+    "content": "故障案例：服务 cartservice 出现 load 异常。\n症状摘要：cartservice 在 1685200590~1685204744 期间 load 指标显著异常，峰值达到 356.000000，疑似存在与当前时间窗重合的资源或依赖故障信号\n关键指标：load，峰值 356.000000，异常窗口 1685200590~1685204744。\n候选角色：origin_candidate。\n历史推断根因：cartservice traffic load spike。\n建议动作：检查突发请求、上游重试和依赖抖动，评估限流与扩容方案。",
+    "service": "cartservice",
+    "fault_type": "load",
+    "root_cause": "cartservice traffic load spike",
+    "solution": "检查突发请求、上游重试和依赖抖动，评估限流与扩容方案。",
+    "source": "D:/downloads/aiops_rca/benchmark/data_with_error.csv",
+    "tags": [
+      "cartservice",
+      "load",
+      "load",
+      "origin_candidate"
+    ],
+    "metadata": {
+      "metric": "load",
+      "peak_value": 356.0,
+      "window_start": 1685200590,
+      "window_end": 1685204744,
+      "anomaly_count": 159,
+      "symptom_summary": "cartservice 在 1685200590~1685204744 期间 load 指标显著异常，峰值达到 356.000000，疑似存在与当前时间窗重合的资源或依赖故障信号",
+      "evidence_type": "metric_pattern",
+      "candidate_role": "origin_candidate"
+    },
+    "document_id": "6f368fdb-e4ae-4a25-aba6-a2cfc66bda53"
+  },
+  {
+    "title": "cartservice memory anomaly",
+    "content": "故障案例：服务 cartservice 出现 memory 异常。\n症状摘要：cartservice 在 1685200589~1685204290 期间 mem 指标显著异常，峰值达到 53661696.000000，疑似存在与当前时间窗重合的资源或依赖故障信号\n关键指标：mem，峰值 53661696.000000，异常窗口 1685200589~1685204290。\n候选角色：origin_candidate。\n历史推断根因：cartservice memory pressure。\n建议动作：检查对象堆积、缓存膨胀和内存泄漏迹象，必要时重启并分析内存占用。",
+    "service": "cartservice",
+    "fault_type": "memory",
+    "root_cause": "cartservice memory pressure",
+    "solution": "检查对象堆积、缓存膨胀和内存泄漏迹象，必要时重启并分析内存占用。",
+    "source": "D:/downloads/aiops_rca/benchmark/data_with_error.csv",
+    "tags": [
+      "cartservice",
+      "mem",
+      "memory",
+      "origin_candidate"
+    ],
+    "metadata": {
+      "metric": "mem",
+      "peak_value": 53661696.0,
+      "window_start": 1685200589,
+      "window_end": 1685204290,
+      "anomaly_count": 38,
+      "symptom_summary": "cartservice 在 1685200589~1685204290 期间 mem 指标显著异常，峰值达到 53661696.000000，疑似存在与当前时间窗重合的资源或依赖故障信号",
+      "evidence_type": "metric_pattern",
+      "candidate_role": "origin_candidate"
+    },
+    "document_id": "b16ded21-0b8e-4461-bffe-67b4a6618cdd"
+  },
+  {
+    "title": "checkoutservice cpu anomaly",
+    "content": "故障案例：服务 checkoutservice 出现 cpu 异常。\n症状摘要：checkoutservice 在 1685200750~1685204755 期间 cpu 指标显著异常，峰值达到 2.259963，疑似存在与当前时间窗重合的资源或依赖故障信号\n关键指标：cpu，峰值 2.259963，异常窗口 1685200750~1685204755。\n候选角色：origin_candidate。\n历史推断根因：checkoutservice CPU saturation。\n建议动作：检查异常流量、热点请求和服务实例 CPU 饱和情况，必要时扩容或回滚最近变更。",
+    "service": "checkoutservice",
+    "fault_type": "cpu",
+    "root_cause": "checkoutservice CPU saturation",
+    "solution": "检查异常流量、热点请求和服务实例 CPU 饱和情况，必要时扩容或回滚最近变更。",
+    "source": "D:/downloads/aiops_rca/benchmark/data_with_error.csv",
+    "tags": [
+      "checkoutservice",
+      "cpu",
+      "cpu",
+      "origin_candidate"
+    ],
+    "metadata": {
+      "metric": "cpu",
+      "peak_value": 2.2599634548119747,
+      "window_start": 1685200750,
+      "window_end": 1685204755,
+      "anomaly_count": 72,
+      "symptom_summary": "checkoutservice 在 1685200750~1685204755 期间 cpu 指标显著异常，峰值达到 2.259963，疑似存在与当前时间窗重合的资源或依赖故障信号",
+      "evidence_type": "metric_pattern",
+      "candidate_role": "origin_candidate"
+    },
+    "document_id": "b9ff19e2-f47b-4689-a44a-6adb2fa9450a"
+  },
+  {
+    "title": "checkoutservice latency anomaly",
+    "content": "故障案例：服务 checkoutservice 出现 latency 异常。\n症状摘要：checkoutservice 在 1685200976~1685204671 期间 latency 指标显著异常，峰值达到 0.084167，疑似存在与当前时间窗重合的资源或依赖故障信号\n关键指标：latency，峰值 0.084167，异常窗口 1685200976~1685204671。\n候选角色：symptom_or_propagated。\n历史推断根因：checkoutservice request latency spike。\n建议动作：检查慢调用、下游依赖延迟和线程池阻塞，必要时做链路回放分析。",
+    "service": "checkoutservice",
+    "fault_type": "latency",
+    "root_cause": "checkoutservice request latency spike",
+    "solution": "检查慢调用、下游依赖延迟和线程池阻塞，必要时做链路回放分析。",
+    "source": "D:/downloads/aiops_rca/benchmark/data_with_error.csv",
+    "tags": [
+      "checkoutservice",
+      "latency",
+      "latency",
+      "symptom_or_propagated"
+    ],
+    "metadata": {
+      "metric": "latency",
+      "peak_value": 0.0841666666666667,
+      "window_start": 1685200976,
+      "window_end": 1685204671,
+      "anomaly_count": 113,
+      "symptom_summary": "checkoutservice 在 1685200976~1685204671 期间 latency 指标显著异常，峰值达到 0.084167，疑似存在与当前时间窗重合的资源或依赖故障信号",
+      "evidence_type": "metric_pattern",
+      "candidate_role": "symptom_or_propagated"
+    },
+    "document_id": "d04208b3-7d9c-4e8f-8967-aac31d5b0544"
+  },
+  {
+    "title": "checkoutservice load anomaly",
+    "content": "故障案例：服务 checkoutservice 出现 load 异常。\n症状摘要：checkoutservice 在 1685200591~1685204766 期间 load 指标显著异常，峰值达到 28.000000，疑似存在与当前时间窗重合的资源或依赖故障信号\n关键指标：load，峰值 28.000000，异常窗口 1685200591~1685204766。\n候选角色：origin_candidate。\n历史推断根因：checkoutservice traffic load spike。\n建议动作：检查突发请求、上游重试和依赖抖动，评估限流与扩容方案。",
+    "service": "checkoutservice",
+    "fault_type": "load",
+    "root_cause": "checkoutservice traffic load spike",
+    "solution": "检查突发请求、上游重试和依赖抖动，评估限流与扩容方案。",
+    "source": "D:/downloads/aiops_rca/benchmark/data_with_error.csv",
+    "tags": [
+      "checkoutservice",
+      "load",
+      "load",
+      "origin_candidate"
+    ],
+    "metadata": {
+      "metric": "load",
+      "peak_value": 28.0,
+      "window_start": 1685200591,
+      "window_end": 1685204766,
+      "anomaly_count": 81,
+      "symptom_summary": "checkoutservice 在 1685200591~1685204766 期间 load 指标显著异常，峰值达到 28.000000，疑似存在与当前时间窗重合的资源或依赖故障信号",
+      "evidence_type": "metric_pattern",
+      "candidate_role": "origin_candidate"
+    },
+    "document_id": "b2e657fc-33bd-4061-a95b-a475084832a9"
+  },
+  {
+    "title": "checkoutservice memory anomaly",
+    "content": "故障案例：服务 checkoutservice 出现 memory 异常。\n症状摘要：checkoutservice 在 1685201339~1685204279 期间 mem 指标显著异常，峰值达到 12550144.000000，疑似存在与当前时间窗重合的资源或依赖故障信号\n关键指标：mem，峰值 12550144.000000，异常窗口 1685201339~1685204279。\n候选角色：origin_candidate。\n历史推断根因：checkoutservice memory pressure。\n建议动作：检查对象堆积、缓存膨胀和内存泄漏迹象，必要时重启并分析内存占用。",
+    "service": "checkoutservice",
+    "fault_type": "memory",
+    "root_cause": "checkoutservice memory pressure",
+    "solution": "检查对象堆积、缓存膨胀和内存泄漏迹象，必要时重启并分析内存占用。",
+    "source": "D:/downloads/aiops_rca/benchmark/data_with_error.csv",
+    "tags": [
+      "checkoutservice",
+      "mem",
+      "memory",
+      "origin_candidate"
+    ],
+    "metadata": {
+      "metric": "mem",
+      "peak_value": 12550144.0,
+      "window_start": 1685201339,
+      "window_end": 1685204279,
+      "anomaly_count": 62,
+      "symptom_summary": "checkoutservice 在 1685201339~1685204279 期间 mem 指标显著异常，峰值达到 12550144.000000，疑似存在与当前时间窗重合的资源或依赖故障信号",
+      "evidence_type": "metric_pattern",
+      "candidate_role": "origin_candidate"
+    },
+    "document_id": "67b0fc2f-3825-45f8-9e28-e8d6c331be74"
+  },
+  {
+    "title": "currencyservice cpu anomaly",
+    "content": "故障案例：服务 currencyservice 出现 cpu 异常。\n症状摘要：currencyservice 在 1685200618~1685204756 期间 cpu 指标显著异常，峰值达到 8.968911，疑似存在与当前时间窗重合的资源或依赖故障信号\n关键指标：cpu，峰值 8.968911，异常窗口 1685200618~1685204756。\n候选角色：origin_candidate。\n历史推断根因：currencyservice CPU saturation。\n建议动作：检查异常流量、热点请求和服务实例 CPU 饱和情况，必要时扩容或回滚最近变更。",
+    "service": "currencyservice",
+    "fault_type": "cpu",
+    "root_cause": "currencyservice CPU saturation",
+    "solution": "检查异常流量、热点请求和服务实例 CPU 饱和情况，必要时扩容或回滚最近变更。",
+    "source": "D:/downloads/aiops_rca/benchmark/data_with_error.csv",
+    "tags": [
+      "currencyservice",
+      "cpu",
+      "cpu",
+      "origin_candidate"
+    ],
+    "metadata": {
+      "metric": "cpu",
+      "peak_value": 8.968911064718316,
+      "window_start": 1685200618,
+      "window_end": 1685204756,
+      "anomaly_count": 163,
+      "symptom_summary": "currencyservice 在 1685200618~1685204756 期间 cpu 指标显著异常，峰值达到 8.968911，疑似存在与当前时间窗重合的资源或依赖故障信号",
+      "evidence_type": "metric_pattern",
+      "candidate_role": "origin_candidate"
+    },
+    "document_id": "2fec2435-3ba5-49f3-a1c4-5ece659b84fa"
+  },
+  {
+    "title": "currencyservice latency anomaly",
+    "content": "故障案例：服务 currencyservice 出现 latency 异常。\n症状摘要：currencyservice 在 1685200592~1685201465 期间 latency 指标显著异常，峰值达到 0.006008，疑似存在与当前时间窗重合的资源或依赖故障信号\n关键指标：latency，峰值 0.006008，异常窗口 1685200592~1685201465。\n候选角色：symptom_or_propagated。\n历史推断根因：currencyservice request latency spike。\n建议动作：检查慢调用、下游依赖延迟和线程池阻塞，必要时做链路回放分析。",
+    "service": "currencyservice",
+    "fault_type": "latency",
+    "root_cause": "currencyservice request latency spike",
+    "solution": "检查慢调用、下游依赖延迟和线程池阻塞，必要时做链路回放分析。",
+    "source": "D:/downloads/aiops_rca/benchmark/data_with_error.csv",
+    "tags": [
+      "currencyservice",
+      "latency",
+      "latency",
+      "symptom_or_propagated"
+    ],
+    "metadata": {
+      "metric": "latency",
+      "peak_value": 0.0060079941860465,
+      "window_start": 1685200592,
+      "window_end": 1685201465,
+      "anomaly_count": 34,
+      "symptom_summary": "currencyservice 在 1685200592~1685201465 期间 latency 指标显著异常，峰值达到 0.006008，疑似存在与当前时间窗重合的资源或依赖故障信号",
+      "evidence_type": "metric_pattern",
+      "candidate_role": "symptom_or_propagated"
+    },
+    "document_id": "dc9a545f-66dd-4a00-96f7-b78694dfbfd8"
+  },
+  {
+    "title": "currencyservice load anomaly",
+    "content": "故障案例：服务 currencyservice 出现 load 异常。\n症状摘要：currencyservice 在 1685200676~1685204744 期间 load 指标显著异常，峰值达到 730.000000，疑似存在与当前时间窗重合的资源或依赖故障信号\n关键指标：load，峰值 730.000000，异常窗口 1685200676~1685204744。\n候选角色：origin_candidate。\n历史推断根因：currencyservice traffic load spike。\n建议动作：检查突发请求、上游重试和依赖抖动，评估限流与扩容方案。",
+    "service": "currencyservice",
+    "fault_type": "load",
+    "root_cause": "currencyservice traffic load spike",
+    "solution": "检查突发请求、上游重试和依赖抖动，评估限流与扩容方案。",
+    "source": "D:/downloads/aiops_rca/benchmark/data_with_error.csv",
+    "tags": [
+      "currencyservice",
+      "load",
+      "load",
+      "origin_candidate"
+    ],
+    "metadata": {
+      "metric": "load",
+      "peak_value": 730.0,
+      "window_start": 1685200676,
+      "window_end": 1685204744,
+      "anomaly_count": 115,
+      "symptom_summary": "currencyservice 在 1685200676~1685204744 期间 load 指标显著异常，峰值达到 730.000000，疑似存在与当前时间窗重合的资源或依赖故障信号",
+      "evidence_type": "metric_pattern",
+      "candidate_role": "origin_candidate"
+    },
+    "document_id": "96637762-7e6f-4509-ac01-13bbe5fe49be"
+  },
+  {
+    "title": "currencyservice memory anomaly",
+    "content": "故障案例：服务 currencyservice 出现 memory 异常。\n症状摘要：currencyservice 在 1685203240~1685203942 期间 mem 指标显著异常，峰值达到 44670976.000000，疑似存在与当前时间窗重合的资源或依赖故障信号\n关键指标：mem，峰值 44670976.000000，异常窗口 1685203240~1685203942。\n候选角色：origin_candidate。\n历史推断根因：currencyservice memory pressure。\n建议动作：检查对象堆积、缓存膨胀和内存泄漏迹象，必要时重启并分析内存占用。",
+    "service": "currencyservice",
+    "fault_type": "memory",
+    "root_cause": "currencyservice memory pressure",
+    "solution": "检查对象堆积、缓存膨胀和内存泄漏迹象，必要时重启并分析内存占用。",
+    "source": "D:/downloads/aiops_rca/benchmark/data_with_error.csv",
+    "tags": [
+      "currencyservice",
+      "mem",
+      "memory",
+      "origin_candidate"
+    ],
+    "metadata": {
+      "metric": "mem",
+      "peak_value": 44670976.0,
+      "window_start": 1685203240,
+      "window_end": 1685203942,
+      "anomaly_count": 48,
+      "symptom_summary": "currencyservice 在 1685203240~1685203942 期间 mem 指标显著异常，峰值达到 44670976.000000，疑似存在与当前时间窗重合的资源或依赖故障信号",
+      "evidence_type": "metric_pattern",
+      "candidate_role": "origin_candidate"
+    },
+    "document_id": "3ea12c8e-fc90-4045-9fdf-8365623358d4"
+  },
+  {
+    "title": "emailservice cpu anomaly",
+    "content": "故障案例：服务 emailservice 出现 cpu 异常。\n症状摘要：emailservice 在 1685200636~1685204696 期间 cpu 指标显著异常，峰值达到 1.139063，疑似存在与当前时间窗重合的资源或依赖故障信号\n关键指标：cpu，峰值 1.139063，异常窗口 1685200636~1685204696。\n候选角色：origin_candidate。\n历史推断根因：emailservice CPU saturation。\n建议动作：检查异常流量、热点请求和服务实例 CPU 饱和情况，必要时扩容或回滚最近变更。",
+    "service": "emailservice",
+    "fault_type": "cpu",
+    "root_cause": "emailservice CPU saturation",
+    "solution": "检查异常流量、热点请求和服务实例 CPU 饱和情况，必要时扩容或回滚最近变更。",
+    "source": "D:/downloads/aiops_rca/benchmark/data_with_error.csv",
+    "tags": [
+      "emailservice",
+      "cpu",
+      "cpu",
+      "origin_candidate"
+    ],
+    "metadata": {
+      "metric": "cpu",
+      "peak_value": 1.1390625313767098,
+      "window_start": 1685200636,
+      "window_end": 1685204696,
+      "anomaly_count": 145,
+      "symptom_summary": "emailservice 在 1685200636~1685204696 期间 cpu 指标显著异常，峰值达到 1.139063，疑似存在与当前时间窗重合的资源或依赖故障信号",
+      "evidence_type": "metric_pattern",
+      "candidate_role": "origin_candidate"
+    },
+    "document_id": "48b053da-b295-4bc7-a9a0-12d3dbbd1f56"
+  },
+  {
+    "title": "emailservice latency anomaly",
+    "content": "故障案例：服务 emailservice 出现 latency 异常。\n症状摘要：emailservice 在 1685201711~1685204756 期间 latency 指标显著异常，峰值达到 0.004640，疑似存在与当前时间窗重合的资源或依赖故障信号\n关键指标：latency，峰值 0.004640，异常窗口 1685201711~1685204756。\n候选角色：symptom_or_propagated。\n历史推断根因：emailservice request latency spike。\n建议动作：检查慢调用、下游依赖延迟和线程池阻塞，必要时做链路回放分析。",
+    "service": "emailservice",
+    "fault_type": "latency",
+    "root_cause": "emailservice request latency spike",
+    "solution": "检查慢调用、下游依赖延迟和线程池阻塞，必要时做链路回放分析。",
+    "source": "D:/downloads/aiops_rca/benchmark/data_with_error.csv",
+    "tags": [
+      "emailservice",
+      "latency",
+      "latency",
+      "symptom_or_propagated"
+    ],
+    "metadata": {
+      "metric": "latency",
+      "peak_value": 0.00464,
+      "window_start": 1685201711,
+      "window_end": 1685204756,
+      "anomaly_count": 177,
+      "symptom_summary": "emailservice 在 1685201711~1685204756 期间 latency 指标显著异常，峰值达到 0.004640，疑似存在与当前时间窗重合的资源或依赖故障信号",
+      "evidence_type": "metric_pattern",
+      "candidate_role": "symptom_or_propagated"
+    },
+    "document_id": "5665ddd1-38ee-4a80-91e0-9fe709f2ed1d"
+  },
+  {
+    "title": "emailservice load anomaly",
+    "content": "故障案例：服务 emailservice 出现 load 异常。\n症状摘要：emailservice 在 1685200640~1685204766 期间 load 指标显著异常，峰值达到 32.000000，疑似存在与当前时间窗重合的资源或依赖故障信号\n关键指标：load，峰值 32.000000，异常窗口 1685200640~1685204766。\n候选角色：origin_candidate。\n历史推断根因：emailservice traffic load spike。\n建议动作：检查突发请求、上游重试和依赖抖动，评估限流与扩容方案。",
+    "service": "emailservice",
+    "fault_type": "load",
+    "root_cause": "emailservice traffic load spike",
+    "solution": "检查突发请求、上游重试和依赖抖动，评估限流与扩容方案。",
+    "source": "D:/downloads/aiops_rca/benchmark/data_with_error.csv",
+    "tags": [
+      "emailservice",
+      "load",
+      "load",
+      "origin_candidate"
+    ],
+    "metadata": {
+      "metric": "load",
+      "peak_value": 32.0,
+      "window_start": 1685200640,
+      "window_end": 1685204766,
+      "anomaly_count": 77,
+      "symptom_summary": "emailservice 在 1685200640~1685204766 期间 load 指标显著异常，峰值达到 32.000000，疑似存在与当前时间窗重合的资源或依赖故障信号",
+      "evidence_type": "metric_pattern",
+      "candidate_role": "origin_candidate"
+    },
+    "document_id": "a343ef8c-6daf-4996-850a-7e52c49c0630"
+  },
+  {
+    "title": "emailservice memory anomaly",
+    "content": "故障案例：服务 emailservice 出现 memory 异常。\n症状摘要：emailservice 在 1685204668~1685204686 期间 mem 指标显著异常，峰值达到 43397120.000000，疑似存在与当前时间窗重合的资源或依赖故障信号\n关键指标：mem，峰值 43397120.000000，异常窗口 1685204668~1685204686。\n候选角色：origin_candidate。\n历史推断根因：emailservice memory pressure。\n建议动作：检查对象堆积、缓存膨胀和内存泄漏迹象，必要时重启并分析内存占用。",
+    "service": "emailservice",
+    "fault_type": "memory",
+    "root_cause": "emailservice memory pressure",
+    "solution": "检查对象堆积、缓存膨胀和内存泄漏迹象，必要时重启并分析内存占用。",
+    "source": "D:/downloads/aiops_rca/benchmark/data_with_error.csv",
+    "tags": [
+      "emailservice",
+      "mem",
+      "memory",
+      "origin_candidate"
+    ],
+    "metadata": {
+      "metric": "mem",
+      "peak_value": 43397120.0,
+      "window_start": 1685204668,
+      "window_end": 1685204686,
+      "anomaly_count": 19,
+      "symptom_summary": "emailservice 在 1685204668~1685204686 期间 mem 指标显著异常，峰值达到 43397120.000000，疑似存在与当前时间窗重合的资源或依赖故障信号",
+      "evidence_type": "metric_pattern",
+      "candidate_role": "origin_candidate"
+    },
+    "document_id": "75f9a7e6-0c7b-4cdc-98e3-49d15f37a131"
+  },
+  {
+    "title": "frontend cpu anomaly",
+    "content": "故障案例：服务 frontend 出现 cpu 异常。\n症状摘要：frontend 在 1685200603~1685204752 期间 cpu 指标显著异常，峰值达到 19.775248，疑似存在与当前时间窗重合的资源或依赖故障信号\n关键指标：cpu，峰值 19.775248，异常窗口 1685200603~1685204752。\n候选角色：origin_candidate。\n历史推断根因：frontend CPU saturation。\n建议动作：检查异常流量、热点请求和服务实例 CPU 饱和情况，必要时扩容或回滚最近变更。",
+    "service": "frontend",
+    "fault_type": "cpu",
+    "root_cause": "frontend CPU saturation",
+    "solution": "检查异常流量、热点请求和服务实例 CPU 饱和情况，必要时扩容或回滚最近变更。",
+    "source": "D:/downloads/aiops_rca/benchmark/data_with_error.csv",
+    "tags": [
+      "frontend",
+      "cpu",
+      "cpu",
+      "origin_candidate"
+    ],
+    "metadata": {
+      "metric": "cpu",
+      "peak_value": 19.77524822538519,
+      "window_start": 1685200603,
+      "window_end": 1685204752,
+      "anomaly_count": 177,
+      "symptom_summary": "frontend 在 1685200603~1685204752 期间 cpu 指标显著异常，峰值达到 19.775248，疑似存在与当前时间窗重合的资源或依赖故障信号",
+      "evidence_type": "metric_pattern",
+      "candidate_role": "origin_candidate"
+    },
+    "document_id": "ed45619d-a750-4029-aed4-298cb116f940"
+  },
+  {
+    "title": "frontend latency anomaly",
+    "content": "故障案例：服务 frontend 出现 latency 异常。\n症状摘要：frontend 在 1685200588~1685204428 期间 latency 指标显著异常，峰值达到 0.421122，疑似存在与当前时间窗重合的资源或依赖故障信号\n关键指标：latency，峰值 0.421122，异常窗口 1685200588~1685204428。\n候选角色：symptom_or_propagated。\n历史推断根因：frontend request latency spike。\n建议动作：检查慢调用、下游依赖延迟和线程池阻塞，必要时做链路回放分析。",
+    "service": "frontend",
+    "fault_type": "latency",
+    "root_cause": "frontend request latency spike",
+    "solution": "检查慢调用、下游依赖延迟和线程池阻塞，必要时做链路回放分析。",
+    "source": "D:/downloads/aiops_rca/benchmark/data_with_error.csv",
+    "tags": [
+      "frontend",
+      "latency",
+      "latency",
+      "symptom_or_propagated"
+    ],
+    "metadata": {
+      "metric": "latency",
+      "peak_value": 0.4211224489795919,
+      "window_start": 1685200588,
+      "window_end": 1685204428,
+      "anomaly_count": 236,
+      "symptom_summary": "frontend 在 1685200588~1685204428 期间 latency 指标显著异常，峰值达到 0.421122，疑似存在与当前时间窗重合的资源或依赖故障信号",
+      "evidence_type": "metric_pattern",
+      "candidate_role": "symptom_or_propagated"
+    },
+    "document_id": "2696387f-6b1f-446c-bc61-05f35b3be446"
+  },
+  {
+    "title": "frontend load anomaly",
+    "content": "故障案例：服务 frontend 出现 load 异常。\n症状摘要：frontend 在 1685200676~1685204745 期间 load 指标显著异常，峰值达到 146.000000，疑似存在与当前时间窗重合的资源或依赖故障信号\n关键指标：load，峰值 146.000000，异常窗口 1685200676~1685204745。\n候选角色：origin_candidate。\n历史推断根因：frontend traffic load spike。\n建议动作：检查突发请求、上游重试和依赖抖动，评估限流与扩容方案。",
+    "service": "frontend",
+    "fault_type": "load",
+    "root_cause": "frontend traffic load spike",
+    "solution": "检查突发请求、上游重试和依赖抖动，评估限流与扩容方案。",
+    "source": "D:/downloads/aiops_rca/benchmark/data_with_error.csv",
+    "tags": [
+      "frontend",
+      "load",
+      "load",
+      "origin_candidate"
+    ],
+    "metadata": {
+      "metric": "load",
+      "peak_value": 146.0,
+      "window_start": 1685200676,
+      "window_end": 1685204745,
+      "anomaly_count": 162,
+      "symptom_summary": "frontend 在 1685200676~1685204745 期间 load 指标显著异常，峰值达到 146.000000，疑似存在与当前时间窗重合的资源或依赖故障信号",
+      "evidence_type": "metric_pattern",
+      "candidate_role": "origin_candidate"
+    },
+    "document_id": "282e641c-9725-4e0a-821a-98aed2ae2c75"
+  },
+  {
+    "title": "frontend memory anomaly",
+    "content": "故障案例：服务 frontend 出现 memory 异常。\n症状摘要：frontend 在 1685200764~1685202824 期间 mem 指标显著异常，峰值达到 19144704.000000，疑似存在与当前时间窗重合的资源或依赖故障信号\n关键指标：mem，峰值 19144704.000000，异常窗口 1685200764~1685202824。\n候选角色：origin_candidate。\n历史推断根因：frontend memory pressure。\n建议动作：检查对象堆积、缓存膨胀和内存泄漏迹象，必要时重启并分析内存占用。",
+    "service": "frontend",
+    "fault_type": "memory",
+    "root_cause": "frontend memory pressure",
+    "solution": "检查对象堆积、缓存膨胀和内存泄漏迹象，必要时重启并分析内存占用。",
+    "source": "D:/downloads/aiops_rca/benchmark/data_with_error.csv",
+    "tags": [
+      "frontend",
+      "mem",
+      "memory",
+      "origin_candidate"
+    ],
+    "metadata": {
+      "metric": "mem",
+      "peak_value": 19144704.0,
+      "window_start": 1685200764,
+      "window_end": 1685202824,
+      "anomaly_count": 72,
+      "symptom_summary": "frontend 在 1685200764~1685202824 期间 mem 指标显著异常，峰值达到 19144704.000000，疑似存在与当前时间窗重合的资源或依赖故障信号",
+      "evidence_type": "metric_pattern",
+      "candidate_role": "origin_candidate"
+    },
+    "document_id": "67c1f24e-683d-4022-9557-55ee222f1c9a"
+  },
+  {
+    "title": "main cpu anomaly",
+    "content": "故障案例：服务 main 出现 cpu 异常。\n症状摘要：main 在 1685200607~1685204750 期间 cpu 指标显著异常，峰值达到 8.901370，疑似存在与当前时间窗重合的资源或依赖故障信号\n关键指标：cpu，峰值 8.901370，异常窗口 1685200607~1685204750。\n候选角色：origin_candidate。\n历史推断根因：main CPU saturation。\n建议动作：检查异常流量、热点请求和服务实例 CPU 饱和情况，必要时扩容或回滚最近变更。",
+    "service": "main",
+    "fault_type": "cpu",
+    "root_cause": "main CPU saturation",
+    "solution": "检查异常流量、热点请求和服务实例 CPU 饱和情况，必要时扩容或回滚最近变更。",
+    "source": "D:/downloads/aiops_rca/benchmark/data_with_error.csv",
+    "tags": [
+      "main",
+      "cpu",
+      "cpu",
+      "origin_candidate"
+    ],
+    "metadata": {
+      "metric": "cpu",
+      "peak_value": 8.901369557770368,
+      "window_start": 1685200607,
+      "window_end": 1685204750,
+      "anomaly_count": 201,
+      "symptom_summary": "main 在 1685200607~1685204750 期间 cpu 指标显著异常，峰值达到 8.901370，疑似存在与当前时间窗重合的资源或依赖故障信号",
+      "evidence_type": "metric_pattern",
+      "candidate_role": "origin_candidate"
+    },
+    "document_id": "bf85a36d-ad47-4f99-bbf0-cada69a14ba7"
+  },
+  {
+    "title": "main memory anomaly",
+    "content": "故障案例：服务 main 出现 memory 异常。\n症状摘要：main 在 1685200588~1685201011 期间 mem 指标显著异常，峰值达到 72900608.000000，疑似存在与当前时间窗重合的资源或依赖故障信号\n关键指标：mem，峰值 72900608.000000，异常窗口 1685200588~1685201011。\n候选角色：origin_candidate。\n历史推断根因：main memory pressure。\n建议动作：检查对象堆积、缓存膨胀和内存泄漏迹象，必要时重启并分析内存占用。",
+    "service": "main",
+    "fault_type": "memory",
+    "root_cause": "main memory pressure",
+    "solution": "检查对象堆积、缓存膨胀和内存泄漏迹象，必要时重启并分析内存占用。",
+    "source": "D:/downloads/aiops_rca/benchmark/data_with_error.csv",
+    "tags": [
+      "main",
+      "mem",
+      "memory",
+      "origin_candidate"
+    ],
+    "metadata": {
+      "metric": "mem",
+      "peak_value": 72900608.0,
+      "window_start": 1685200588,
+      "window_end": 1685201011,
+      "anomaly_count": 424,
+      "symptom_summary": "main 在 1685200588~1685201011 期间 mem 指标显著异常，峰值达到 72900608.000000，疑似存在与当前时间窗重合的资源或依赖故障信号",
+      "evidence_type": "metric_pattern",
+      "candidate_role": "origin_candidate"
+    },
+    "document_id": "96db267e-a4f9-47ee-b322-66bc90ecbf48"
+  },
+  {
+    "title": "paymentservice cpu anomaly",
+    "content": "故障案例：服务 paymentservice 出现 cpu 异常。\n症状摘要：paymentservice 在 1685200668~1685204788 期间 cpu 指标显著异常，峰值达到 0.571097，疑似存在与当前时间窗重合的资源或依赖故障信号\n关键指标：cpu，峰值 0.571097，异常窗口 1685200668~1685204788。\n候选角色：origin_candidate。\n历史推断根因：paymentservice CPU saturation。\n建议动作：检查异常流量、热点请求和服务实例 CPU 饱和情况，必要时扩容或回滚最近变更。",
+    "service": "paymentservice",
+    "fault_type": "cpu",
+    "root_cause": "paymentservice CPU saturation",
+    "solution": "检查异常流量、热点请求和服务实例 CPU 饱和情况，必要时扩容或回滚最近变更。",
+    "source": "D:/downloads/aiops_rca/benchmark/data_with_error.csv",
+    "tags": [
+      "paymentservice",
+      "cpu",
+      "cpu",
+      "origin_candidate"
+    ],
+    "metadata": {
+      "metric": "cpu",
+      "peak_value": 0.5710966595719503,
+      "window_start": 1685200668,
+      "window_end": 1685204788,
+      "anomaly_count": 110,
+      "symptom_summary": "paymentservice 在 1685200668~1685204788 期间 cpu 指标显著异常，峰值达到 0.571097，疑似存在与当前时间窗重合的资源或依赖故障信号",
+      "evidence_type": "metric_pattern",
+      "candidate_role": "origin_candidate"
+    },
+    "document_id": "072d6eaa-d68a-4851-8d7d-5c2efaa7283a"
+  },
+  {
+    "title": "paymentservice latency anomaly",
+    "content": "故障案例：服务 paymentservice 出现 latency 异常。\n症状摘要：paymentservice 在 1685202476~1685204587 期间 latency 指标显著异常，峰值达到 0.004825，疑似存在与当前时间窗重合的资源或依赖故障信号\n关键指标：latency，峰值 0.004825，异常窗口 1685202476~1685204587。\n候选角色：symptom_or_propagated。\n历史推断根因：paymentservice request latency spike。\n建议动作：检查慢调用、下游依赖延迟和线程池阻塞，必要时做链路回放分析。",
+    "service": "paymentservice",
+    "fault_type": "latency",
+    "root_cause": "paymentservice request latency spike",
+    "solution": "检查慢调用、下游依赖延迟和线程池阻塞，必要时做链路回放分析。",
+    "source": "D:/downloads/aiops_rca/benchmark/data_with_error.csv",
+    "tags": [
+      "paymentservice",
+      "latency",
+      "latency",
+      "symptom_or_propagated"
+    ],
+    "metadata": {
+      "metric": "latency",
+      "peak_value": 0.0048249999999999,
+      "window_start": 1685202476,
+      "window_end": 1685204587,
+      "anomaly_count": 128,
+      "symptom_summary": "paymentservice 在 1685202476~1685204587 期间 latency 指标显著异常，峰值达到 0.004825，疑似存在与当前时间窗重合的资源或依赖故障信号",
+      "evidence_type": "metric_pattern",
+      "candidate_role": "symptom_or_propagated"
+    },
+    "document_id": "051fe3fe-d0eb-4055-8856-69f3bc7807d0"
+  },
+  {
+    "title": "paymentservice load anomaly",
+    "content": "故障案例：服务 paymentservice 出现 load 异常。\n症状摘要：paymentservice 在 1685200640~1685204766 期间 load 指标显著异常，峰值达到 34.000000，疑似存在与当前时间窗重合的资源或依赖故障信号\n关键指标：load，峰值 34.000000，异常窗口 1685200640~1685204766。\n候选角色：origin_candidate。\n历史推断根因：paymentservice traffic load spike。\n建议动作：检查突发请求、上游重试和依赖抖动，评估限流与扩容方案。",
+    "service": "paymentservice",
+    "fault_type": "load",
+    "root_cause": "paymentservice traffic load spike",
+    "solution": "检查突发请求、上游重试和依赖抖动，评估限流与扩容方案。",
+    "source": "D:/downloads/aiops_rca/benchmark/data_with_error.csv",
+    "tags": [
+      "paymentservice",
+      "load",
+      "load",
+      "origin_candidate"
+    ],
+    "metadata": {
+      "metric": "load",
+      "peak_value": 34.0,
+      "window_start": 1685200640,
+      "window_end": 1685204766,
+      "anomaly_count": 66,
+      "symptom_summary": "paymentservice 在 1685200640~1685204766 期间 load 指标显著异常，峰值达到 34.000000，疑似存在与当前时间窗重合的资源或依赖故障信号",
+      "evidence_type": "metric_pattern",
+      "candidate_role": "origin_candidate"
+    },
+    "document_id": "f2ac3cfb-bafe-4dcd-a677-3eb71d85ad21"
+  },
+  {
+    "title": "productcatalogservice cpu anomaly",
+    "content": "故障案例：服务 productcatalogservice 出现 cpu 异常。\n症状摘要：productcatalogservice 在 1685200603~1685204700 期间 cpu 指标显著异常，峰值达到 13.278649，疑似存在与当前时间窗重合的资源或依赖故障信号\n关键指标：cpu，峰值 13.278649，异常窗口 1685200603~1685204700。\n候选角色：origin_candidate。\n历史推断根因：productcatalogservice CPU saturation。\n建议动作：检查异常流量、热点请求和服务实例 CPU 饱和情况，必要时扩容或回滚最近变更。",
+    "service": "productcatalogservice",
+    "fault_type": "cpu",
+    "root_cause": "productcatalogservice CPU saturation",
+    "solution": "检查异常流量、热点请求和服务实例 CPU 饱和情况，必要时扩容或回滚最近变更。",
+    "source": "D:/downloads/aiops_rca/benchmark/data_with_error.csv",
+    "tags": [
+      "productcatalogservice",
+      "cpu",
+      "cpu",
+      "origin_candidate"
+    ],
+    "metadata": {
+      "metric": "cpu",
+      "peak_value": 13.27864942893406,
+      "window_start": 1685200603,
+      "window_end": 1685204700,
+      "anomaly_count": 172,
+      "symptom_summary": "productcatalogservice 在 1685200603~1685204700 期间 cpu 指标显著异常，峰值达到 13.278649，疑似存在与当前时间窗重合的资源或依赖故障信号",
+      "evidence_type": "metric_pattern",
+      "candidate_role": "origin_candidate"
+    },
+    "document_id": "20d32715-2476-4a07-9ceb-a0abcddcb044"
+  },
+  {
+    "title": "productcatalogservice latency anomaly",
+    "content": "故障案例：服务 productcatalogservice 出现 latency 异常。\n症状摘要：productcatalogservice 在 1685200588~1685202505 期间 latency 指标显著异常，峰值达到 0.007731，疑似存在与当前时间窗重合的资源或依赖故障信号\n关键指标：latency，峰值 0.007731，异常窗口 1685200588~1685202505。\n候选角色：symptom_or_propagated。\n历史推断根因：productcatalogservice request latency spike。\n建议动作：检查慢调用、下游依赖延迟和线程池阻塞，必要时做链路回放分析。",
+    "service": "productcatalogservice",
+    "fault_type": "latency",
+    "root_cause": "productcatalogservice request latency spike",
+    "solution": "检查慢调用、下游依赖延迟和线程池阻塞，必要时做链路回放分析。",
+    "source": "D:/downloads/aiops_rca/benchmark/data_with_error.csv",
+    "tags": [
+      "productcatalogservice",
+      "latency",
+      "latency",
+      "symptom_or_propagated"
+    ],
+    "metadata": {
+      "metric": "latency",
+      "peak_value": 0.007731113956466,
+      "window_start": 1685200588,
+      "window_end": 1685202505,
+      "anomaly_count": 196,
+      "symptom_summary": "productcatalogservice 在 1685200588~1685202505 期间 latency 指标显著异常，峰值达到 0.007731，疑似存在与当前时间窗重合的资源或依赖故障信号",
+      "evidence_type": "metric_pattern",
+      "candidate_role": "symptom_or_propagated"
+    },
+    "document_id": "934f306f-529a-45e1-a617-2c4811441f6d"
+  },
+  {
+    "title": "productcatalogservice load anomaly",
+    "content": "故障案例：服务 productcatalogservice 出现 load 异常。\n症状摘要：productcatalogservice 在 1685200590~1685204744 期间 load 指标显著异常，峰值达到 1316.000000，疑似存在与当前时间窗重合的资源或依赖故障信号\n关键指标：load，峰值 1316.000000，异常窗口 1685200590~1685204744。\n候选角色：origin_candidate。\n历史推断根因：productcatalogservice traffic load spike。\n建议动作：检查突发请求、上游重试和依赖抖动，评估限流与扩容方案。",
+    "service": "productcatalogservice",
+    "fault_type": "load",
+    "root_cause": "productcatalogservice traffic load spike",
+    "solution": "检查突发请求、上游重试和依赖抖动，评估限流与扩容方案。",
+    "source": "D:/downloads/aiops_rca/benchmark/data_with_error.csv",
+    "tags": [
+      "productcatalogservice",
+      "load",
+      "load",
+      "origin_candidate"
+    ],
+    "metadata": {
+      "metric": "load",
+      "peak_value": 1316.0,
+      "window_start": 1685200590,
+      "window_end": 1685204744,
+      "anomaly_count": 147,
+      "symptom_summary": "productcatalogservice 在 1685200590~1685204744 期间 load 指标显著异常，峰值达到 1316.000000，疑似存在与当前时间窗重合的资源或依赖故障信号",
+      "evidence_type": "metric_pattern",
+      "candidate_role": "origin_candidate"
+    },
+    "document_id": "37aca621-ba1e-44ff-a87c-be2a2bf8d7ff"
+  },
+  {
+    "title": "productcatalogservice memory anomaly",
+    "content": "故障案例：服务 productcatalogservice 出现 memory 异常。\n症状摘要：productcatalogservice 在 1685200783~1685202766 期间 mem 指标显著异常，峰值达到 11251712.000000，疑似存在与当前时间窗重合的资源或依赖故障信号\n关键指标：mem，峰值 11251712.000000，异常窗口 1685200783~1685202766。\n候选角色：origin_candidate。\n历史推断根因：productcatalogservice memory pressure。\n建议动作：检查对象堆积、缓存膨胀和内存泄漏迹象，必要时重启并分析内存占用。",
+    "service": "productcatalogservice",
+    "fault_type": "memory",
+    "root_cause": "productcatalogservice memory pressure",
+    "solution": "检查对象堆积、缓存膨胀和内存泄漏迹象，必要时重启并分析内存占用。",
+    "source": "D:/downloads/aiops_rca/benchmark/data_with_error.csv",
+    "tags": [
+      "productcatalogservice",
+      "mem",
+      "memory",
+      "origin_candidate"
+    ],
+    "metadata": {
+      "metric": "mem",
+      "peak_value": 11251712.0,
+      "window_start": 1685200783,
+      "window_end": 1685202766,
+      "anomaly_count": 30,
+      "symptom_summary": "productcatalogservice 在 1685200783~1685202766 期间 mem 指标显著异常，峰值达到 11251712.000000，疑似存在与当前时间窗重合的资源或依赖故障信号",
+      "evidence_type": "metric_pattern",
+      "candidate_role": "origin_candidate"
+    },
+    "document_id": "ff86e0fb-0c44-4fd4-9e11-66b11cad375d"
+  },
+  {
+    "title": "recommendationservice cpu anomaly",
+    "content": "故障案例：服务 recommendationservice 出现 cpu 异常。\n症状摘要：recommendationservice 在 1685200663~1685204747 期间 cpu 指标显著异常，峰值达到 7.567999，疑似存在与当前时间窗重合的资源或依赖故障信号\n关键指标：cpu，峰值 7.567999，异常窗口 1685200663~1685204747。\n候选角色：origin_candidate。\n历史推断根因：recommendationservice CPU saturation。\n建议动作：检查异常流量、热点请求和服务实例 CPU 饱和情况，必要时扩容或回滚最近变更。",
+    "service": "recommendationservice",
+    "fault_type": "cpu",
+    "root_cause": "recommendationservice CPU saturation",
+    "solution": "检查异常流量、热点请求和服务实例 CPU 饱和情况，必要时扩容或回滚最近变更。",
+    "source": "D:/downloads/aiops_rca/benchmark/data_with_error.csv",
+    "tags": [
+      "recommendationservice",
+      "cpu",
+      "cpu",
+      "origin_candidate"
+    ],
+    "metadata": {
+      "metric": "cpu",
+      "peak_value": 7.56799884659501,
+      "window_start": 1685200663,
+      "window_end": 1685204747,
+      "anomaly_count": 184,
+      "symptom_summary": "recommendationservice 在 1685200663~1685204747 期间 cpu 指标显著异常，峰值达到 7.567999，疑似存在与当前时间窗重合的资源或依赖故障信号",
+      "evidence_type": "metric_pattern",
+      "candidate_role": "origin_candidate"
+    },
+    "document_id": "57fd671b-9e00-4850-b715-97db981a2d99"
+  },
+  {
+    "title": "recommendationservice latency anomaly",
+    "content": "故障案例：服务 recommendationservice 出现 latency 异常。\n症状摘要：recommendationservice 在 1685200588~1685204721 期间 latency 指标显著异常，峰值达到 0.018643，疑似存在与当前时间窗重合的资源或依赖故障信号\n关键指标：latency，峰值 0.018643，异常窗口 1685200588~1685204721。\n候选角色：symptom_or_propagated。\n历史推断根因：recommendationservice request latency spike。\n建议动作：检查慢调用、下游依赖延迟和线程池阻塞，必要时做链路回放分析。",
+    "service": "recommendationservice",
+    "fault_type": "latency",
+    "root_cause": "recommendationservice request latency spike",
+    "solution": "检查慢调用、下游依赖延迟和线程池阻塞，必要时做链路回放分析。",
+    "source": "D:/downloads/aiops_rca/benchmark/data_with_error.csv",
+    "tags": [
+      "recommendationservice",
+      "latency",
+      "latency",
+      "symptom_or_propagated"
+    ],
+    "metadata": {
+      "metric": "latency",
+      "peak_value": 0.0186428571428571,
+      "window_start": 1685200588,
+      "window_end": 1685204721,
+      "anomaly_count": 250,
+      "symptom_summary": "recommendationservice 在 1685200588~1685204721 期间 latency 指标显著异常，峰值达到 0.018643，疑似存在与当前时间窗重合的资源或依赖故障信号",
+      "evidence_type": "metric_pattern",
+      "candidate_role": "symptom_or_propagated"
+    },
+    "document_id": "a25c8bfb-c976-4066-a8c6-3b0ff38c9464"
+  },
+  {
+    "title": "recommendationservice load anomaly",
+    "content": "故障案例：服务 recommendationservice 出现 load 异常。\n症状摘要：recommendationservice 在 1685200590~1685204744 期间 load 指标显著异常，峰值达到 200.000000，疑似存在与当前时间窗重合的资源或依赖故障信号\n关键指标：load，峰值 200.000000，异常窗口 1685200590~1685204744。\n候选角色：origin_candidate。\n历史推断根因：recommendationservice traffic load spike。\n建议动作：检查突发请求、上游重试和依赖抖动，评估限流与扩容方案。",
+    "service": "recommendationservice",
+    "fault_type": "load",
+    "root_cause": "recommendationservice traffic load spike",
+    "solution": "检查突发请求、上游重试和依赖抖动，评估限流与扩容方案。",
+    "source": "D:/downloads/aiops_rca/benchmark/data_with_error.csv",
+    "tags": [
+      "recommendationservice",
+      "load",
+      "load",
+      "origin_candidate"
+    ],
+    "metadata": {
+      "metric": "load",
+      "peak_value": 200.0,
+      "window_start": 1685200590,
+      "window_end": 1685204744,
+      "anomaly_count": 134,
+      "symptom_summary": "recommendationservice 在 1685200590~1685204744 期间 load 指标显著异常，峰值达到 200.000000，疑似存在与当前时间窗重合的资源或依赖故障信号",
+      "evidence_type": "metric_pattern",
+      "candidate_role": "origin_candidate"
+    },
+    "document_id": "9db18fe0-9a92-44d3-89e8-98909ba8f88a"
+  },
+  {
+    "title": "recommendationservice memory anomaly",
+    "content": "故障案例：服务 recommendationservice 出现 memory 异常。\n症状摘要：recommendationservice 在 1685202325~1685202742 期间 mem 指标显著异常，峰值达到 49098752.000000，疑似存在与当前时间窗重合的资源或依赖故障信号\n关键指标：mem，峰值 49098752.000000，异常窗口 1685202325~1685202742。\n候选角色：origin_candidate。\n历史推断根因：recommendationservice memory pressure。\n建议动作：检查对象堆积、缓存膨胀和内存泄漏迹象，必要时重启并分析内存占用。",
+    "service": "recommendationservice",
+    "fault_type": "memory",
+    "root_cause": "recommendationservice memory pressure",
+    "solution": "检查对象堆积、缓存膨胀和内存泄漏迹象，必要时重启并分析内存占用。",
+    "source": "D:/downloads/aiops_rca/benchmark/data_with_error.csv",
+    "tags": [
+      "recommendationservice",
+      "mem",
+      "memory",
+      "origin_candidate"
+    ],
+    "metadata": {
+      "metric": "mem",
+      "peak_value": 49098752.0,
+      "window_start": 1685202325,
+      "window_end": 1685202742,
+      "anomaly_count": 24,
+      "symptom_summary": "recommendationservice 在 1685202325~1685202742 期间 mem 指标显著异常，峰值达到 49098752.000000，疑似存在与当前时间窗重合的资源或依赖故障信号",
+      "evidence_type": "metric_pattern",
+      "candidate_role": "origin_candidate"
+    },
+    "document_id": "17164424-9ba0-4d8a-8b35-d54c5967bfae"
+  },
+  {
+    "title": "redis cpu anomaly",
+    "content": "故障案例：服务 redis 出现 cpu 异常。\n症状摘要：redis 在 1685200631~1685204709 期间 cpu 指标显著异常，峰值达到 0.712836，疑似存在与当前时间窗重合的资源或依赖故障信号\n关键指标：cpu，峰值 0.712836，异常窗口 1685200631~1685204709。\n候选角色：origin_candidate。\n历史推断根因：redis CPU saturation。\n建议动作：检查异常流量、热点请求和服务实例 CPU 饱和情况，必要时扩容或回滚最近变更。",
+    "service": "redis",
+    "fault_type": "cpu",
+    "root_cause": "redis CPU saturation",
+    "solution": "检查异常流量、热点请求和服务实例 CPU 饱和情况，必要时扩容或回滚最近变更。",
+    "source": "D:/downloads/aiops_rca/benchmark/data_with_error.csv",
+    "tags": [
+      "redis",
+      "cpu",
+      "cpu",
+      "origin_candidate"
+    ],
+    "metadata": {
+      "metric": "cpu",
+      "peak_value": 0.7128364630811321,
+      "window_start": 1685200631,
+      "window_end": 1685204709,
+      "anomaly_count": 136,
+      "symptom_summary": "redis 在 1685200631~1685204709 期间 cpu 指标显著异常，峰值达到 0.712836，疑似存在与当前时间窗重合的资源或依赖故障信号",
+      "evidence_type": "metric_pattern",
+      "candidate_role": "origin_candidate"
+    },
+    "document_id": "677149fd-ff83-4319-94d2-dcce8bd5dbd9"
+  },
+  {
+    "title": "redis memory anomaly",
+    "content": "故障案例：服务 redis 出现 memory 异常。\n症状摘要：redis 在 1685202946~1685204091 期间 mem 指标显著异常，峰值达到 3235840.000000，疑似存在与当前时间窗重合的资源或依赖故障信号\n关键指标：mem，峰值 3235840.000000，异常窗口 1685202946~1685204091。\n候选角色：origin_candidate。\n历史推断根因：redis memory pressure。\n建议动作：检查对象堆积、缓存膨胀和内存泄漏迹象，必要时重启并分析内存占用。",
+    "service": "redis",
+    "fault_type": "memory",
+    "root_cause": "redis memory pressure",
+    "solution": "检查对象堆积、缓存膨胀和内存泄漏迹象，必要时重启并分析内存占用。",
+    "source": "D:/downloads/aiops_rca/benchmark/data_with_error.csv",
+    "tags": [
+      "redis",
+      "mem",
+      "memory",
+      "origin_candidate"
+    ],
+    "metadata": {
+      "metric": "mem",
+      "peak_value": 3235840.0,
+      "window_start": 1685202946,
+      "window_end": 1685204091,
+      "anomaly_count": 50,
+      "symptom_summary": "redis 在 1685202946~1685204091 期间 mem 指标显著异常，峰值达到 3235840.000000，疑似存在与当前时间窗重合的资源或依赖故障信号",
+      "evidence_type": "metric_pattern",
+      "candidate_role": "origin_candidate"
+    },
+    "document_id": "9604cbea-d5e0-49de-9e81-46eca695b504"
+  },
+  {
+    "title": "shippingservice cpu anomaly",
+    "content": "故障案例：服务 shippingservice 出现 cpu 异常。\n症状摘要：shippingservice 在 1685200602~1685204700 期间 cpu 指标显著异常，峰值达到 1.763522，疑似存在与当前时间窗重合的资源或依赖故障信号\n关键指标：cpu，峰值 1.763522，异常窗口 1685200602~1685204700。\n候选角色：origin_candidate。\n历史推断根因：shippingservice CPU saturation。\n建议动作：检查异常流量、热点请求和服务实例 CPU 饱和情况，必要时扩容或回滚最近变更。",
+    "service": "shippingservice",
+    "fault_type": "cpu",
+    "root_cause": "shippingservice CPU saturation",
+    "solution": "检查异常流量、热点请求和服务实例 CPU 饱和情况，必要时扩容或回滚最近变更。",
+    "source": "D:/downloads/aiops_rca/benchmark/data_with_error.csv",
+    "tags": [
+      "shippingservice",
+      "cpu",
+      "cpu",
+      "origin_candidate"
+    ],
+    "metadata": {
+      "metric": "cpu",
+      "peak_value": 1.7635222859949573,
+      "window_start": 1685200602,
+      "window_end": 1685204700,
+      "anomaly_count": 158,
+      "symptom_summary": "shippingservice 在 1685200602~1685204700 期间 cpu 指标显著异常，峰值达到 1.763522，疑似存在与当前时间窗重合的资源或依赖故障信号",
+      "evidence_type": "metric_pattern",
+      "candidate_role": "origin_candidate"
+    },
+    "document_id": "68e3786d-54ca-4f9e-af65-3bca5c2356e2"
+  },
+  {
+    "title": "shippingservice latency anomaly",
+    "content": "故障案例：服务 shippingservice 出现 latency 异常。\n症状摘要：shippingservice 在 1685201632~1685204271 期间 latency 指标显著异常，峰值达到 0.004766，疑似存在与当前时间窗重合的资源或依赖故障信号\n关键指标：latency，峰值 0.004766，异常窗口 1685201632~1685204271。\n候选角色：symptom_or_propagated。\n历史推断根因：shippingservice request latency spike。\n建议动作：检查慢调用、下游依赖延迟和线程池阻塞，必要时做链路回放分析。",
+    "service": "shippingservice",
+    "fault_type": "latency",
+    "root_cause": "shippingservice request latency spike",
+    "solution": "检查慢调用、下游依赖延迟和线程池阻塞，必要时做链路回放分析。",
+    "source": "D:/downloads/aiops_rca/benchmark/data_with_error.csv",
+    "tags": [
+      "shippingservice",
+      "latency",
+      "latency",
+      "symptom_or_propagated"
+    ],
+    "metadata": {
+      "metric": "latency",
+      "peak_value": 0.0047658779576587,
+      "window_start": 1685201632,
+      "window_end": 1685204271,
+      "anomaly_count": 144,
+      "symptom_summary": "shippingservice 在 1685201632~1685204271 期间 latency 指标显著异常，峰值达到 0.004766，疑似存在与当前时间窗重合的资源或依赖故障信号",
+      "evidence_type": "metric_pattern",
+      "candidate_role": "symptom_or_propagated"
+    },
+    "document_id": "45268530-dedb-412c-aa57-8678d81b946e"
+  },
+  {
+    "title": "shippingservice load anomaly",
+    "content": "故障案例：服务 shippingservice 出现 load 异常。\n症状摘要：shippingservice 在 1685200651~1685204699 期间 load 指标显著异常，峰值达到 128.000000，疑似存在与当前时间窗重合的资源或依赖故障信号\n关键指标：load，峰值 128.000000，异常窗口 1685200651~1685204699。\n候选角色：origin_candidate。\n历史推断根因：shippingservice traffic load spike。\n建议动作：检查突发请求、上游重试和依赖抖动，评估限流与扩容方案。",
+    "service": "shippingservice",
+    "fault_type": "load",
+    "root_cause": "shippingservice traffic load spike",
+    "solution": "检查突发请求、上游重试和依赖抖动，评估限流与扩容方案。",
+    "source": "D:/downloads/aiops_rca/benchmark/data_with_error.csv",
+    "tags": [
+      "shippingservice",
+      "load",
+      "load",
+      "origin_candidate"
+    ],
+    "metadata": {
+      "metric": "load",
+      "peak_value": 128.0,
+      "window_start": 1685200651,
+      "window_end": 1685204699,
+      "anomaly_count": 70,
+      "symptom_summary": "shippingservice 在 1685200651~1685204699 期间 load 指标显著异常，峰值达到 128.000000，疑似存在与当前时间窗重合的资源或依赖故障信号",
+      "evidence_type": "metric_pattern",
+      "candidate_role": "origin_candidate"
+    },
+    "document_id": "fa1a079c-c159-4e4f-a231-1bfefc54e70e"
+  },
+  {
+    "title": "shippingservice memory anomaly",
+    "content": "故障案例：服务 shippingservice 出现 memory 异常。\n症状摘要：shippingservice 在 1685201372~1685202996 期间 mem 指标显著异常，峰值达到 10608640.000000，疑似存在与当前时间窗重合的资源或依赖故障信号\n关键指标：mem，峰值 10608640.000000，异常窗口 1685201372~1685202996。\n候选角色：origin_candidate。\n历史推断根因：shippingservice memory pressure。\n建议动作：检查对象堆积、缓存膨胀和内存泄漏迹象，必要时重启并分析内存占用。",
+    "service": "shippingservice",
+    "fault_type": "memory",
+    "root_cause": "shippingservice memory pressure",
+    "solution": "检查对象堆积、缓存膨胀和内存泄漏迹象，必要时重启并分析内存占用。",
+    "source": "D:/downloads/aiops_rca/benchmark/data_with_error.csv",
+    "tags": [
+      "shippingservice",
+      "mem",
+      "memory",
+      "origin_candidate"
+    ],
+    "metadata": {
+      "metric": "mem",
+      "peak_value": 10608640.0,
+      "window_start": 1685201372,
+      "window_end": 1685202996,
+      "anomaly_count": 63,
+      "symptom_summary": "shippingservice 在 1685201372~1685202996 期间 mem 指标显著异常，峰值达到 10608640.000000，疑似存在与当前时间窗重合的资源或依赖故障信号",
+      "evidence_type": "metric_pattern",
+      "candidate_role": "origin_candidate"
+    },
+    "document_id": "3161d285-e42c-4615-8adc-db93c236dcd8"
+  },
+  {
+    "title": "frontend-external error anomaly",
+    "content": "故障案例：服务 frontend-external 出现 error 异常。\n症状摘要：frontend-external 在 1685201354~1685204313 期间 error 指标显著异常，峰值达到 4.000000，疑似存在与当前时间窗重合的资源或依赖故障信号\n关键指标：error，峰值 4.000000，异常窗口 1685201354~1685204313。\n候选角色：symptom_or_propagated。\n历史推断根因：frontend-external application error surge。\n建议动作：检查错误码分布、发布变更和依赖可用性，必要时回滚并修复异常路径。",
+    "service": "frontend-external",
+    "fault_type": "error",
+    "root_cause": "frontend-external application error surge",
+    "solution": "检查错误码分布、发布变更和依赖可用性，必要时回滚并修复异常路径。",
+    "source": "D:/downloads/aiops_rca/benchmark/data_with_error.csv",
+    "tags": [
+      "frontend-external",
+      "error",
+      "error",
+      "symptom_or_propagated"
+    ],
+    "metadata": {
+      "metric": "error",
+      "peak_value": 4.0,
+      "window_start": 1685201354,
+      "window_end": 1685204313,
+      "anomaly_count": 35,
+      "symptom_summary": "frontend-external 在 1685201354~1685204313 期间 error 指标显著异常，峰值达到 4.000000，疑似存在与当前时间窗重合的资源或依赖故障信号",
+      "evidence_type": "metric_pattern",
+      "candidate_role": "symptom_or_propagated"
+    },
+    "document_id": "f404462c-2d66-4ddf-b5dd-cdf6b98a7910"
+  },
+  {
+    "title": "frontend-external load anomaly",
+    "content": "故障案例：服务 frontend-external 出现 load 异常。\n症状摘要：frontend-external 在 1685200676~1685204745 期间 load 指标显著异常，峰值达到 146.000000，疑似存在与当前时间窗重合的资源或依赖故障信号\n关键指标：load，峰值 146.000000，异常窗口 1685200676~1685204745。\n候选角色：origin_candidate。\n历史推断根因：frontend-external traffic load spike。\n建议动作：检查突发请求、上游重试和依赖抖动，评估限流与扩容方案。",
+    "service": "frontend-external",
+    "fault_type": "load",
+    "root_cause": "frontend-external traffic load spike",
+    "solution": "检查突发请求、上游重试和依赖抖动，评估限流与扩容方案。",
+    "source": "D:/downloads/aiops_rca/benchmark/data_with_error.csv",
+    "tags": [
+      "frontend-external",
+      "load",
+      "load",
+      "origin_candidate"
+    ],
+    "metadata": {
+      "metric": "load",
+      "peak_value": 146.0,
+      "window_start": 1685200676,
+      "window_end": 1685204745,
+      "anomaly_count": 162,
+      "symptom_summary": "frontend-external 在 1685200676~1685204745 期间 load 指标显著异常，峰值达到 146.000000，疑似存在与当前时间窗重合的资源或依赖故障信号",
+      "evidence_type": "metric_pattern",
+      "candidate_role": "origin_candidate"
+    },
+    "document_id": "0da76691-6447-4db8-b617-f33e1d284bbe"
+  }
+]

@@ -1,93 +1,150 @@
-import streamlit as st
+from __future__ import annotations
+
 import json
-from knowledge_base.knowledge_manager import get_knowledge_manager
+
+import streamlit as st
+
+from knowledge_base.schemas import KnowledgeDocument
+from knowledge_base.store import KnowledgeBaseStore
 
 
-def render_knowledge_page():
-    """Render knowledge base management page"""
-    st.header("Knowledge Base Management")
-    
-    km = get_knowledge_manager()
-    
-    tab1, tab2, tab3 = st.tabs(["Fault Patterns", "Edit Knowledge", "Tools"])
-    
-    with tab1:
-        _render_fault_patterns(km)
-    
-    with tab2:
-        _render_edit_pattern(km)
-    
-    with tab3:
-        _render_tools(km)
 
+def render_knowledge_page() -> None:
+    st.title("知识库管理")
+    store = KnowledgeBaseStore()
 
-def _render_fault_patterns(km):
-    """Render fault pattern list"""
-    st.subheader("Defined Fault Patterns")
-    for fault_type, pattern in km.fault_patterns.items():
-        with st.expander(f"{fault_type.upper()} - {pattern['name']}", expanded=False):
-            st.write(f"**Typical Metrics**: {', '.join(pattern['typical_metrics'])}")
-            st.write(f"**Typical Services**: {', '.join(pattern['typical_services'])}")
-            
-            st.write("**Common Root Causes**:")
-            for root in pattern['common_roots']:
-                st.write(f"- {root}")
-            
-            st.write("**Typical Propagation Path**:")
-            st.info(pattern['propagation_path'])
-            
-            st.write("**Mitigation**:")
-            for mitigation in pattern['mitigation']:
-                st.write(f"- {mitigation}")
+    col1, col2 = st.columns([2, 1])
+    with col1:
+        st.subheader("知识条目")
+    with col2:
+        if st.button("重建索引", use_container_width=True):
+            result = store.rebuild_index()
+            st.success(f"索引已重建：{json.dumps(result, ensure_ascii=False)}")
 
-
-def _render_edit_pattern(km):
-    """Render edit fault pattern"""
-    st.subheader("Edit Fault Pattern")
-    fault_type_edit = st.selectbox("Select fault type:", list(km.fault_patterns.keys()))
-    
-    if fault_type_edit:
-        pattern = km.fault_patterns[fault_type_edit]
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            new_name = st.text_input("Fault name:", value=pattern['name'])
-            new_metrics = st.text_area("Typical metrics (one per line):", value='\n'.join(pattern['typical_metrics']))
-            new_services = st.text_area("Typical services (one per line):", value='\n'.join(pattern['typical_services']))
-        
-        with col2:
-            new_roots = st.text_area("Common root causes (one per line):", value='\n'.join(pattern['common_roots']))
-            new_propagation = st.text_area("Propagation path:", value=pattern['propagation_path'])
-            new_mitigations = st.text_area("Mitigation (one per line):", value='\n'.join(pattern['mitigation']))
-        
-        if st.button("Save Changes", width='stretch'):
-            km.fault_patterns[fault_type_edit] = {
-                "name": new_name,
-                "typical_metrics": [m.strip() for m in new_metrics.split('\n') if m.strip()],
-                "typical_services": [s.strip() for s in new_services.split('\n') if s.strip()],
-                "common_roots": [r.strip() for r in new_roots.split('\n') if r.strip()],
-                "propagation_path": new_propagation,
-                "mitigation": [m.strip() for m in new_mitigations.split('\n') if m.strip()]
-            }
-            km.save_learned_patterns()
-            st.success("Knowledge base updated!")
-
-
-def _render_tools(km):
-    """Render knowledge base tools"""
-    st.subheader("Knowledge Base Tools")
-    if st.button("Rebuild Knowledge Base", width='stretch'):
-        with st.spinner("Analyzing all datasets..."):
-            results = km.build_knowledge_from_all_datasets()
-            st.success("Knowledge base rebuilt!")
-            st.json(results, expanded=False)
-    
-    if st.button("Export Knowledge Base", width='stretch'):
-        kb_json = json.dumps(km.fault_patterns, ensure_ascii=False, indent=2)
-        st.download_button(
-            label="Download Knowledge Base JSON",
-            data=kb_json,
-            file_name="fault_patterns.json",
-            mime="application/json",
-            width='stretch'
+    documents = store.list_documents()
+    if documents:
+        selected_id = st.selectbox(
+            "选择知识条目",
+            options=[document.document_id for document in documents],
+            format_func=lambda item: _format_option(item, documents),
         )
+        document = next(item for item in documents if item.document_id == selected_id)
+        _render_edit_form(store, document)
+        st.divider()
+    else:
+        st.info("当前知识库为空，可以先新增条目或运行 build_knowledge_base.py。")
+
+    st.subheader("新增知识条目")
+    _render_create_form(store)
+
+    with st.expander("当前知识文档预览", expanded=False):
+        st.dataframe([document.to_dict() for document in documents], use_container_width=True)
+
+
+
+def _render_edit_form(store: KnowledgeBaseStore, document: KnowledgeDocument) -> None:
+    st.subheader("编辑知识条目")
+    with st.form(f"edit_{document.document_id}"):
+        title = st.text_input("标题", value=document.title)
+        content = st.text_area("内容", value=document.content, height=160)
+        service = st.text_input("服务", value=document.service or "")
+        fault_type = st.text_input("故障类型", value=document.fault_type or "")
+        root_cause = st.text_input("根因", value=document.root_cause or "")
+        solution = st.text_area("解决建议", value=document.solution or "", height=100)
+        source = st.text_input("来源", value=document.source)
+        tags = st.text_input("标签（逗号分隔）", value=", ".join(document.tags))
+        metadata = st.text_area(
+            "元数据（JSON）",
+            value=json.dumps(document.metadata, ensure_ascii=False, indent=2),
+            height=140,
+        )
+        submitted = st.form_submit_button("保存修改")
+        if submitted:
+            payload = _build_document_payload(
+                title=title,
+                content=content,
+                service=service,
+                fault_type=fault_type,
+                root_cause=root_cause,
+                solution=solution,
+                source=source,
+                tags=tags,
+                metadata=metadata,
+            )
+            if payload is None:
+                st.error("元数据必须是合法 JSON。")
+                return
+            store.update_document(document.document_id, **payload)
+            st.success("知识条目已更新，请手动重建索引以同步检索结果。")
+
+    if st.button("删除当前条目", key=f"delete_{document.document_id}"):
+        store.delete_document(document.document_id)
+        st.success("知识条目已删除，请手动重建索引。")
+
+
+
+def _render_create_form(store: KnowledgeBaseStore) -> None:
+    with st.form("create_document"):
+        title = st.text_input("标题", value="")
+        content = st.text_area("内容", value="", height=160)
+        service = st.text_input("服务", value="")
+        fault_type = st.text_input("故障类型", value="")
+        root_cause = st.text_input("根因", value="")
+        solution = st.text_area("解决建议", value="", height=100)
+        source = st.text_input("来源", value="manual")
+        tags = st.text_input("标签（逗号分隔）", value="")
+        metadata = st.text_area("元数据（JSON）", value="{}", height=140)
+        submitted = st.form_submit_button("新增条目")
+        if submitted:
+            payload = _build_document_payload(
+                title=title,
+                content=content,
+                service=service,
+                fault_type=fault_type,
+                root_cause=root_cause,
+                solution=solution,
+                source=source,
+                tags=tags,
+                metadata=metadata,
+            )
+            if payload is None:
+                st.error("元数据必须是合法 JSON。")
+                return
+            created = store.add_document(KnowledgeDocument.from_dict(payload))
+            st.success(f"已新增知识条目：{created.document_id}")
+
+
+
+def _build_document_payload(
+    *,
+    title: str,
+    content: str,
+    service: str,
+    fault_type: str,
+    root_cause: str,
+    solution: str,
+    source: str,
+    tags: str,
+    metadata: str,
+) -> dict | None:
+    try:
+        metadata_payload = json.loads(metadata or "{}")
+    except json.JSONDecodeError:
+        return None
+    return {
+        "title": title.strip(),
+        "content": content.strip(),
+        "service": service.strip() or None,
+        "fault_type": fault_type.strip() or None,
+        "root_cause": root_cause.strip() or None,
+        "solution": solution.strip() or None,
+        "source": source.strip() or "manual",
+        "tags": [item.strip() for item in tags.split(",") if item.strip()],
+        "metadata": metadata_payload,
+    }
+
+
+
+def _format_option(document_id: str, documents: list[KnowledgeDocument]) -> str:
+    document = next(item for item in documents if item.document_id == document_id)
+    return f"{document.title} ({document.document_id})"

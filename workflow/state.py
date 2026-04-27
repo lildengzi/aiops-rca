@@ -1,49 +1,49 @@
-"""
-工作流状态定义 - 增强版，支持结构化证据汇总和仲裁输出
-"""
-import operator
-from typing import Annotated, TypedDict, Optional, List, Dict, Any
+from __future__ import annotations
+
+from dataclasses import asdict, dataclass, field
+from datetime import datetime
+from pathlib import Path
+from typing import Any
+
+from config import MAX_ITERATIONS, THINK_LOG_DIR
+from workflow.graph_state import GraphState
 
 
-class RCAState(TypedDict):
-    """根因分析工作流的全局状态"""
-    # 用户输入
-    user_query: str
-    fault_type: str  # 初始故障类型（可能为unknown，仅作参考标签）
-    detected_fault_type: str  # 自动检测后的候选异常模式（仅参考）
-    full_analysis: bool  # 全指标分析模式
+@dataclass
+class RCAState:
+    user_input: str
+    csv_path: str
+    start: int | None = None
+    end: int | None = None
+    iteration: int = 0
+    max_iter: int = MAX_ITERATIONS
+    dataset_summary: dict[str, Any] = field(default_factory=dict)
+    detected_fault: dict[str, Any] = field(default_factory=dict)
+    plan: dict[str, Any] = field(default_factory=dict)
+    evidence: dict[str, Any] = field(default_factory=dict)
+    decisions: list[dict[str, Any]] = field(default_factory=list)
+    final_result: dict[str, Any] = field(default_factory=dict)
+    report_path: str | None = None
+    report_header: dict[str, Any] = field(default_factory=dict)
+    think_log_path: str | None = None
+    knowledge_hits: list[dict[str, Any]] = field(default_factory=list)
+    llm_enabled: bool = False
+    llm_reason: str = ""
+    node_history: list[dict[str, Any]] = field(default_factory=list)
+    topology_details: dict[str, dict[str, Any]] = field(default_factory=dict)
 
-    # 迭代控制
-    iteration: int
-    max_iterations: int
+    def ensure_think_log_path(self) -> Path:
+        if self.think_log_path:
+            return Path(self.think_log_path)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        safe_name = Path(self.csv_path).stem.replace(" ", "_")
+        path = THINK_LOG_DIR / f"think_log_{safe_name}_{timestamp}.md"
+        self.think_log_path = str(path)
+        return path
 
-    # 并行度控制
-    parallel_degree: int  # 当前并行度
+    def to_graph_state(self) -> GraphState:
+        return GraphState(**asdict(self))
 
-    # 各阶段输出
-    master_plan: str              # 运维专家的计划
-    master_reflection: str        # 运维专家每轮反思
-    
-    # 智能体结构化输出（覆盖式更新，非累积）
-    metric_analysis: Optional[Dict[str, Any]]   # 指标分析结果（结构化）
-    log_analysis: Optional[Dict[str, Any]]      # 日志分析结果（结构化）
-    trace_analysis: Optional[Dict[str, Any]]    # 链路分析结果（结构化）
-    
-    # 聚合节点输出（结构化证据汇总）
-    aggregate_summary: Optional[Dict[str, Any]] # 三方证据汇总
-    
-    # 分析师结构化仲裁输出
-    analyst_output: Optional[Dict[str, Any]]    # 结构化仲裁结果
-    
-    # 保留历史输出用于迭代参考（累积）
-    metric_history: Annotated[list[Dict[str, Any]], operator.add]
-    log_history: Annotated[list[Dict[str, Any]], operator.add]
-    trace_history: Annotated[list[Dict[str, Any]], operator.add]
-    
-    # 最终报告
-    final_report: str             # 最终报告
-    
-    # 过程日志
-    thinking_log: Annotated[list[str], operator.add]
-
-
+    @classmethod
+    def from_graph_state(cls, graph_state: GraphState) -> "RCAState":
+        return cls(**graph_state)

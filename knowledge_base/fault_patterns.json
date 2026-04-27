@@ -30,7 +30,9 @@
     "typical_services_observed": [
       "adservice",
       "cartservice",
-      "checkoutservice"
+      "checkoutservice",
+      "currencyservice",
+      "productcatalogservice"
     ]
   },
   "mem": {
@@ -64,7 +66,9 @@
     "typical_services_observed": [
       "adservice",
       "cartservice",
-      "checkoutservice"
+      "checkoutservice",
+      "currencyservice",
+      "productcatalogservice"
     ]
   },
   "delay": {
@@ -98,7 +102,9 @@
     "typical_services_observed": [
       "adservice",
       "cartservice",
-      "checkoutservice"
+      "checkoutservice",
+      "currencyservice",
+      "productcatalogservice"
     ]
   },
   "disk": {
@@ -132,7 +138,9 @@
     "typical_services_observed": [
       "adservice",
       "cartservice",
-      "checkoutservice"
+      "checkoutservice",
+      "currencyservice",
+      "productcatalogservice"
     ]
   },
   "loss": {
@@ -166,7 +174,9 @@
     "typical_services_observed": [
       "adservice",
       "cartservice",
-      "checkoutservice"
+      "checkoutservice",
+      "currencyservice",
+      "productcatalogservice"
     ]
   }
 }

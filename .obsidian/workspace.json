@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "reports/workflow_diagram.md",
-                "mode": "source",
+                "file": "README_zh.md",
+                "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "workflow_diagram"
+              "title": "README_zh"
             }
           }
         ]
@@ -156,13 +156,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "reports/workflow_diagram.md",
+                "file": "README_zh.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "workflow_diagram 的大纲"
+              "title": "README_zh 的大纲"
             }
           }
         ],
@@ -185,8 +185,9 @@
   },
   "active": "2c7966e9bb8527c5",
   "lastOpenFiles": [
-    "reports/react_sequence.md",
+    "SYSTEM_DESIGN.md",
     "reports/workflow_diagram.md",
+    "reports/react_sequence.md",
     "reports/topology_diagram.md",
     "README.md",
     "knowledge_base/rca_knowledge.md",

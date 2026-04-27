@@ -55,6 +55,712 @@
 - 数据库慢查询 → productcatalogservice 延迟 → recommendationservice 超时 → frontend 延迟
 - 网络分区 → 多个服务间通信中断 → 级联故障
 
+
+
+## 自动注入的故障案例 (来自实验数据)
+
+### 案例 adservice_cpu_1
+- **故障类型**: cpu
+- **注入服务**: adservice
+- **观测错误**:
+  - frontend-external_error: 35 次
+- **数据时长**: 4201 步
+- **提取时间**: 2026-04-25T17:37:44
+
+### 案例 adservice_cpu_2
+- **故障类型**: cpu
+- **注入服务**: adservice
+- **观测错误**:
+  - frontend_error: 1 次
+  - frontend-external_error: 4 次
+- **数据时长**: 4201 步
+- **提取时间**: 2026-04-25T17:37:44
+
+### 案例 adservice_cpu_3
+- **故障类型**: cpu
+- **注入服务**: adservice
+- **观测错误**:
+  - frontend_error: 2 次
+  - frontend-external_error: 3 次
+- **数据时长**: 4201 步
+- **提取时间**: 2026-04-25T17:37:44
+
+### 案例 adservice_cpu_4
+- **故障类型**: cpu
+- **注入服务**: adservice
+- **观测错误**:
+  - frontend-external_error: 4 次
+- **数据时长**: 4201 步
+- **提取时间**: 2026-04-25T17:37:44
+
+### 案例 adservice_cpu_5
+- **故障类型**: cpu
+- **注入服务**: adservice
+- **观测错误**:
+  - frontend_error: 39 次
+  - frontend-external_error: 66 次
+- **数据时长**: 4201 步
+- **提取时间**: 2026-04-25T17:37:44
+
+### 案例 adservice_delay_1
+- **故障类型**: delay
+- **注入服务**: adservice
+- **观测错误**:
+  - frontend-external_error: 1 次
+- **数据时长**: 721 步
+- **提取时间**: 2026-04-25T17:37:44
+
+### 案例 adservice_delay_2
+- **故障类型**: delay
+- **注入服务**: adservice
+- **观测错误**:
+  - frontend-external_error: 2 次
+- **数据时长**: 721 步
+- **提取时间**: 2026-04-25T17:37:44
+
+### 案例 adservice_delay_3
+- **故障类型**: delay
+- **注入服务**: adservice
+- **观测错误**:
+  - frontend-external_error: 1 次
+- **数据时长**: 721 步
+- **提取时间**: 2026-04-25T17:37:44
+
+### 案例 adservice_delay_4
+- **故障类型**: delay
+- **注入服务**: adservice
+- **观测错误**:
+  - frontend-external_error: 1 次
+- **数据时长**: 721 步
+- **提取时间**: 2026-04-25T17:37:44
+
+### 案例 adservice_delay_5
+- **故障类型**: delay
+- **注入服务**: adservice
+- **观测错误**:
+  - frontend-external_error: 2 次
+- **数据时长**: 721 步
+- **提取时间**: 2026-04-25T17:37:44
+
+### 案例 adservice_loss_2
+- **故障类型**: loss
+- **注入服务**: adservice
+- **观测错误**:
+  - frontend_error: 2 次
+  - frontend-external_error: 2 次
+- **数据时长**: 721 步
+- **提取时间**: 2026-04-25T17:37:45
+
+### 案例 adservice_mem_1
+- **故障类型**: mem
+- **注入服务**: adservice
+- **观测错误**:
+  - frontend-external_error: 58 次
+- **数据时长**: 4201 步
+- **提取时间**: 2026-04-25T17:37:45
+
+### 案例 adservice_mem_2
+- **故障类型**: mem
+- **注入服务**: adservice
+- **观测错误**:
+  - frontend_error: 3 次
+  - frontend-external_error: 6 次
+- **数据时长**: 4201 步
+- **提取时间**: 2026-04-25T17:37:45
+
+### 案例 adservice_mem_3
+- **故障类型**: mem
+- **注入服务**: adservice
+- **观测错误**:
+  - frontend-external_error: 8 次
+- **数据时长**: 4201 步
+- **提取时间**: 2026-04-25T17:37:45
+
+### 案例 adservice_mem_4
+- **故障类型**: mem
+- **注入服务**: adservice
+- **观测错误**:
+  - frontend-external_error: 6 次
+- **数据时长**: 4201 步
+- **提取时间**: 2026-04-25T17:37:45
+
+### 案例 adservice_mem_5
+- **故障类型**: mem
+- **注入服务**: adservice
+- **观测错误**:
+  - frontend_error: 1 次
+  - frontend-external_error: 6 次
+- **数据时长**: 4201 步
+- **提取时间**: 2026-04-25T17:37:45
+
+### 案例 cartservice_cpu_1
+- **故障类型**: cpu
+- **注入服务**: cartservice
+- **观测错误**:
+  - frontend-external_error: 8 次
+- **数据时长**: 4201 步
+- **提取时间**: 2026-04-25T17:37:45
+
+### 案例 cartservice_cpu_2
+- **故障类型**: cpu
+- **注入服务**: cartservice
+- **观测错误**:
+  - frontend-external_error: 10 次
+- **数据时长**: 4201 步
+- **提取时间**: 2026-04-25T17:37:45
+
+### 案例 cartservice_cpu_3
+- **故障类型**: cpu
+- **注入服务**: cartservice
+- **观测错误**:
+  - frontend-external_error: 5 次
+- **数据时长**: 4201 步
+- **提取时间**: 2026-04-25T17:37:45
+
+### 案例 cartservice_cpu_4
+- **故障类型**: cpu
+- **注入服务**: cartservice
+- **观测错误**:
+  - frontend_error: 4 次
+  - frontend-external_error: 8 次
+- **数据时长**: 4201 步
+- **提取时间**: 2026-04-25T17:37:45
+
+### 案例 cartservice_cpu_5
+- **故障类型**: cpu
+- **注入服务**: cartservice
+- **观测错误**:
+  - frontend-external_error: 4 次
+- **数据时长**: 4201 步
+- **提取时间**: 2026-04-25T17:37:45
+
+### 案例 cartservice_delay_1
+- **故障类型**: delay
+- **注入服务**: cartservice
+- **观测错误**:
+  - frontend_error: 1 次
+  - frontend-external_error: 1 次
+- **数据时长**: 721 步
+- **提取时间**: 2026-04-25T17:37:45
+
+### 案例 cartservice_delay_3
+- **故障类型**: delay
+- **注入服务**: cartservice
+- **观测错误**:
+  - frontend-external_error: 37 次
+- **数据时长**: 721 步
+- **提取时间**: 2026-04-25T17:37:45
+
+### 案例 cartservice_delay_4
+- **故障类型**: delay
+- **注入服务**: cartservice
+- **观测错误**:
+  - frontend_error: 3 次
+- **数据时长**: 721 步
+- **提取时间**: 2026-04-25T17:37:45
+
+### 案例 cartservice_delay_5
+- **故障类型**: delay
+- **注入服务**: cartservice
+- **观测错误**:
+  - frontend-external_error: 1 次
+- **数据时长**: 721 步
+- **提取时间**: 2026-04-25T17:37:45
+
+### 案例 cartservice_loss_2
+- **故障类型**: loss
+- **注入服务**: cartservice
+- **观测错误**:
+  - frontend-external_error: 5 次
+- **数据时长**: 721 步
+- **提取时间**: 2026-04-25T17:37:45
+
+### 案例 cartservice_loss_5
+- **故障类型**: loss
+- **注入服务**: cartservice
+- **观测错误**:
+  - frontend-external_error: 1 次
+- **数据时长**: 721 步
+- **提取时间**: 2026-04-25T17:37:45
+
+### 案例 cartservice_mem_1
+- **故障类型**: mem
+- **注入服务**: cartservice
+- **观测错误**:
+  - frontend-external_error: 2 次
+- **数据时长**: 4201 步
+- **提取时间**: 2026-04-25T17:37:45
+
+### 案例 cartservice_mem_2
+- **故障类型**: mem
+- **注入服务**: cartservice
+- **观测错误**:
+  - frontend-external_error: 6 次
+- **数据时长**: 4201 步
+- **提取时间**: 2026-04-25T17:37:45
+
+### 案例 cartservice_mem_3
+- **故障类型**: mem
+- **注入服务**: cartservice
+- **观测错误**:
+  - frontend_error: 4 次
+  - frontend-external_error: 7 次
+- **数据时长**: 4201 步
+- **提取时间**: 2026-04-25T17:37:45
+
+### 案例 cartservice_mem_4
+- **故障类型**: mem
+- **注入服务**: cartservice
+- **观测错误**:
+  - frontend_error: 2 次
+  - frontend-external_error: 6 次
+- **数据时长**: 4201 步
+- **提取时间**: 2026-04-25T17:37:45
+
+### 案例 cartservice_mem_5
+- **故障类型**: mem
+- **注入服务**: cartservice
+- **观测错误**:
+  - frontend_error: 3 次
+  - frontend-external_error: 2 次
+- **数据时长**: 4201 步
+- **提取时间**: 2026-04-25T17:37:45
+
+### 案例 checkoutservice_cpu_2
+- **故障类型**: cpu
+- **注入服务**: checkoutservice
+- **观测错误**:
+  - frontend_error: 2 次
+  - frontend-external_error: 2 次
+- **数据时长**: 4201 步
+- **提取时间**: 2026-04-25T17:37:45
+
+### 案例 checkoutservice_cpu_3
+- **故障类型**: cpu
+- **注入服务**: checkoutservice
+- **观测错误**:
+  - frontend_error: 1 次
+  - frontend-external_error: 4 次
+- **数据时长**: 4201 步
+- **提取时间**: 2026-04-25T17:37:45
+
+### 案例 checkoutservice_cpu_4
+- **故障类型**: cpu
+- **注入服务**: checkoutservice
+- **观测错误**:
+  - frontend-external_error: 1 次
+- **数据时长**: 2827 步
+- **提取时间**: 2026-04-25T17:37:45
+
+### 案例 checkoutservice_cpu_5
+- **故障类型**: cpu
+- **注入服务**: checkoutservice
+- **观测错误**:
+  - frontend_error: 1 次
+  - frontend-external_error: 8 次
+- **数据时长**: 4201 步
+- **提取时间**: 2026-04-25T17:37:45
+
+### 案例 checkoutservice_delay_2
+- **故障类型**: delay
+- **注入服务**: checkoutservice
+- **观测错误**:
+  - frontend-external_error: 1 次
+- **数据时长**: 721 步
+- **提取时间**: 2026-04-25T17:37:45
+
+### 案例 checkoutservice_delay_3
+- **故障类型**: delay
+- **注入服务**: checkoutservice
+- **观测错误**:
+  - frontend-external_error: 1 次
+- **数据时长**: 721 步
+- **提取时间**: 2026-04-25T17:37:45
+
+### 案例 checkoutservice_delay_4
+- **故障类型**: delay
+- **注入服务**: checkoutservice
+- **观测错误**:
+  - frontend-external_error: 3 次
+- **数据时长**: 721 步
+- **提取时间**: 2026-04-25T17:37:45
+
+### 案例 checkoutservice_delay_5
+- **故障类型**: delay
+- **注入服务**: checkoutservice
+- **观测错误**:
+  - frontend-external_error: 1 次
+- **数据时长**: 721 步
+- **提取时间**: 2026-04-25T17:37:45
+
+### 案例 checkoutservice_disk_2
+- **故障类型**: disk
+- **注入服务**: checkoutservice
+- **观测错误**:
+  - frontend-external_error: 1 次
+- **数据时长**: 721 步
+- **提取时间**: 2026-04-25T17:37:45
+
+### 案例 checkoutservice_loss_1
+- **故障类型**: loss
+- **注入服务**: checkoutservice
+- **观测错误**:
+  - frontend-external_error: 2 次
+- **数据时长**: 721 步
+- **提取时间**: 2026-04-25T17:37:45
+
+### 案例 checkoutservice_loss_2
+- **故障类型**: loss
+- **注入服务**: checkoutservice
+- **观测错误**:
+  - frontend-external_error: 7 次
+- **数据时长**: 721 步
+- **提取时间**: 2026-04-25T17:37:45
+
+### 案例 checkoutservice_loss_3
+- **故障类型**: loss
+- **注入服务**: checkoutservice
+- **观测错误**:
+  - frontend_error: 1 次
+  - frontend-external_error: 2 次
+- **数据时长**: 721 步
+- **提取时间**: 2026-04-25T17:37:45
+
+### 案例 checkoutservice_loss_5
+- **故障类型**: loss
+- **注入服务**: checkoutservice
+- **观测错误**:
+  - frontend-external_error: 1 次
+- **数据时长**: 721 步
+- **提取时间**: 2026-04-25T17:37:46
+
+### 案例 checkoutservice_mem_1
+- **故障类型**: mem
+- **注入服务**: checkoutservice
+- **观测错误**:
+  - frontend-external_error: 5 次
+- **数据时长**: 4201 步
+- **提取时间**: 2026-04-25T17:37:46
+
+### 案例 checkoutservice_mem_2
+- **故障类型**: mem
+- **注入服务**: checkoutservice
+- **观测错误**:
+  - frontend_error: 1 次
+  - frontend-external_error: 4 次
+- **数据时长**: 4201 步
+- **提取时间**: 2026-04-25T17:37:46
+
+### 案例 checkoutservice_mem_3
+- **故障类型**: mem
+- **注入服务**: checkoutservice
+- **观测错误**:
+  - frontend_error: 1 次
+  - frontend-external_error: 4 次
+- **数据时长**: 4201 步
+- **提取时间**: 2026-04-25T17:37:46
+
+### 案例 checkoutservice_mem_4
+- **故障类型**: mem
+- **注入服务**: checkoutservice
+- **观测错误**:
+  - frontend_error: 1 次
+  - frontend-external_error: 6 次
+- **数据时长**: 4201 步
+- **提取时间**: 2026-04-25T17:37:46
+
+### 案例 checkoutservice_mem_5
+- **故障类型**: mem
+- **注入服务**: checkoutservice
+- **观测错误**:
+  - frontend_error: 2 次
+- **数据时长**: 4201 步
+- **提取时间**: 2026-04-25T17:37:46
+
+### 案例 currencyservice_cpu_1
+- **故障类型**: cpu
+- **注入服务**: currencyservice
+- **观测错误**:
+  - frontend_error: 2 次
+  - frontend-external_error: 6 次
+- **数据时长**: 4201 步
+- **提取时间**: 2026-04-25T17:37:46
+
+### 案例 currencyservice_cpu_2
+- **故障类型**: cpu
+- **注入服务**: currencyservice
+- **观测错误**:
+  - frontend-external_error: 5 次
+- **数据时长**: 4201 步
+- **提取时间**: 2026-04-25T17:37:46
+
+### 案例 currencyservice_cpu_3
+- **故障类型**: cpu
+- **注入服务**: currencyservice
+- **观测错误**:
+  - frontend_error: 2 次
+  - frontend-external_error: 2 次
+- **数据时长**: 4201 步
+- **提取时间**: 2026-04-25T17:37:46
+
+### 案例 currencyservice_cpu_4
+- **故障类型**: cpu
+- **注入服务**: currencyservice
+- **观测错误**:
+  - frontend_error: 1 次
+  - frontend-external_error: 3 次
+- **数据时长**: 4201 步
+- **提取时间**: 2026-04-25T17:37:46
+
+### 案例 currencyservice_cpu_5
+- **故障类型**: cpu
+- **注入服务**: currencyservice
+- **观测错误**:
+  - frontend-external_error: 2 次
+- **数据时长**: 4201 步
+- **提取时间**: 2026-04-25T17:37:46
+
+### 案例 currencyservice_delay_2
+- **故障类型**: delay
+- **注入服务**: currencyservice
+- **观测错误**:
+  - frontend-external_error: 1 次
+- **数据时长**: 721 步
+- **提取时间**: 2026-04-25T17:37:46
+
+### 案例 currencyservice_delay_4
+- **故障类型**: delay
+- **注入服务**: currencyservice
+- **观测错误**:
+  - frontend-external_error: 1 次
+- **数据时长**: 721 步
+- **提取时间**: 2026-04-25T17:37:46
+
+### 案例 currencyservice_delay_5
+- **故障类型**: delay
+- **注入服务**: currencyservice
+- **观测错误**:
+  - frontend-external_error: 2 次
+- **数据时长**: 721 步
+- **提取时间**: 2026-04-25T17:37:46
+
+### 案例 currencyservice_disk_1
+- **故障类型**: disk
+- **注入服务**: currencyservice
+- **观测错误**:
+  - adservice_error: 1 次
+- **数据时长**: 721 步
+- **提取时间**: 2026-04-25T17:37:46
+
+### 案例 currencyservice_loss_1
+- **故障类型**: loss
+- **注入服务**: currencyservice
+- **观测错误**:
+  - frontend-external_error: 1 次
+- **数据时长**: 721 步
+- **提取时间**: 2026-04-25T17:37:46
+
+### 案例 currencyservice_loss_2
+- **故障类型**: loss
+- **注入服务**: currencyservice
+- **观测错误**:
+  - frontend-external_error: 2 次
+- **数据时长**: 721 步
+- **提取时间**: 2026-04-25T17:37:46
+
+### 案例 currencyservice_loss_3
+- **故障类型**: loss
+- **注入服务**: currencyservice
+- **观测错误**:
+  - frontend-external_error: 2 次
+- **数据时长**: 721 步
+- **提取时间**: 2026-04-25T17:37:46
+
+### 案例 currencyservice_loss_5
+- **故障类型**: loss
+- **注入服务**: currencyservice
+- **观测错误**:
+  - frontend-external_error: 1 次
+- **数据时长**: 721 步
+- **提取时间**: 2026-04-25T17:37:46
+
+### 案例 currencyservice_mem_1
+- **故障类型**: mem
+- **注入服务**: currencyservice
+- **观测错误**:
+  - frontend-external_error: 3 次
+- **数据时长**: 4201 步
+- **提取时间**: 2026-04-25T17:37:46
+
+### 案例 currencyservice_mem_2
+- **故障类型**: mem
+- **注入服务**: currencyservice
+- **观测错误**:
+  - frontend_error: 1 次
+  - frontend-external_error: 2 次
+- **数据时长**: 4201 步
+- **提取时间**: 2026-04-25T17:37:46
+
+### 案例 currencyservice_mem_3
+- **故障类型**: mem
+- **注入服务**: currencyservice
+- **观测错误**:
+  - frontend_error: 2 次
+  - frontend-external_error: 3 次
+- **数据时长**: 4201 步
+- **提取时间**: 2026-04-25T17:37:46
+
+### 案例 currencyservice_mem_5
+- **故障类型**: mem
+- **注入服务**: currencyservice
+- **观测错误**:
+  - frontend_error: 1 次
+  - frontend-external_error: 3 次
+- **数据时长**: 4201 步
+- **提取时间**: 2026-04-25T17:37:46
+
+### 案例 productcatalogservice_cpu_1
+- **故障类型**: cpu
+- **注入服务**: productcatalogservice
+- **观测错误**:
+  - frontend_error: 1 次
+  - frontend-external_error: 6 次
+- **数据时长**: 4201 步
+- **提取时间**: 2026-04-25T17:37:46
+
+### 案例 productcatalogservice_cpu_2
+- **故障类型**: cpu
+- **注入服务**: productcatalogservice
+- **观测错误**:
+  - frontend-external_error: 4 次
+- **数据时长**: 4201 步
+- **提取时间**: 2026-04-25T17:37:46
+
+### 案例 productcatalogservice_cpu_3
+- **故障类型**: cpu
+- **注入服务**: productcatalogservice
+- **观测错误**:
+  - carts_error: 25 次
+  - orders_error: 28 次
+- **数据时长**: 4201 步
+- **提取时间**: 2026-04-25T17:37:46
+
+### 案例 productcatalogservice_cpu_4
+- **故障类型**: cpu
+- **注入服务**: productcatalogservice
+- **观测错误**:
+  - frontend_error: 38 次
+  - frontend-external_error: 43 次
+- **数据时长**: 4201 步
+- **提取时间**: 2026-04-25T17:37:46
+
+### 案例 productcatalogservice_cpu_5
+- **故障类型**: cpu
+- **注入服务**: productcatalogservice
+- **观测错误**:
+  - frontend-external_error: 21 次
+- **数据时长**: 4201 步
+- **提取时间**: 2026-04-25T17:37:46
+
+### 案例 productcatalogservice_delay_2
+- **故障类型**: delay
+- **注入服务**: productcatalogservice
+- **观测错误**:
+  - frontend-external_error: 1 次
+- **数据时长**: 721 步
+- **提取时间**: 2026-04-25T17:37:46
+
+### 案例 productcatalogservice_delay_3
+- **故障类型**: delay
+- **注入服务**: productcatalogservice
+- **观测错误**:
+  - frontend-external_error: 1 次
+- **数据时长**: 721 步
+- **提取时间**: 2026-04-25T17:37:46
+
+### 案例 productcatalogservice_disk_4
+- **故障类型**: disk
+- **注入服务**: productcatalogservice
+- **观测错误**:
+  - frontend_error: 1 次
+- **数据时长**: 721 步
+- **提取时间**: 2026-04-25T17:37:46
+
+### 案例 productcatalogservice_loss_1
+- **故障类型**: loss
+- **注入服务**: productcatalogservice
+- **观测错误**:
+  - frontend-external_error: 2 次
+- **数据时长**: 721 步
+- **提取时间**: 2026-04-25T17:37:46
+
+### 案例 productcatalogservice_loss_2
+- **故障类型**: loss
+- **注入服务**: productcatalogservice
+- **观测错误**:
+  - frontend-external_error: 4 次
+- **数据时长**: 721 步
+- **提取时间**: 2026-04-25T17:37:46
+
+### 案例 productcatalogservice_loss_3
+- **故障类型**: loss
+- **注入服务**: productcatalogservice
+- **观测错误**:
+  - frontend-external_error: 1 次
+- **数据时长**: 721 步
+- **提取时间**: 2026-04-25T17:37:46
+
+### 案例 productcatalogservice_loss_4
+- **故障类型**: loss
+- **注入服务**: productcatalogservice
+- **观测错误**:
+  - frontend-external_error: 1 次
+- **数据时长**: 721 步
+- **提取时间**: 2026-04-25T17:37:46
+
+### 案例 productcatalogservice_mem_1
+- **故障类型**: mem
+- **注入服务**: productcatalogservice
+- **观测错误**:
+  - frontend-external_error: 7 次
+- **数据时长**: 4201 步
+- **提取时间**: 2026-04-25T17:37:46
+
+### 案例 productcatalogservice_mem_2
+- **故障类型**: mem
+- **注入服务**: productcatalogservice
+- **观测错误**:
+  - frontend-external_error: 6 次
+- **数据时长**: 4201 步
+- **提取时间**: 2026-04-25T17:37:47
+
+### 案例 productcatalogservice_mem_3
+- **故障类型**: mem
+- **注入服务**: productcatalogservice
+- **观测错误**:
+  - frontend_error: 1 次
+  - frontend-external_error: 11 次
+- **数据时长**: 4201 步
+- **提取时间**: 2026-04-25T17:37:47
+
+### 案例 productcatalogservice_mem_4
+- **故障类型**: mem
+- **注入服务**: productcatalogservice
+- **观测错误**:
+  - frontend-external_error: 5 次
+- **数据时长**: 4201 步
+- **提取时间**: 2026-04-25T17:37:47
+
+### 案例 productcatalogservice_mem_5
+- **故障类型**: mem
+- **注入服务**: productcatalogservice
+- **观测错误**:
+  - frontend_error: 4 次
+  - frontend-external_error: 2 次
+- **数据时长**: 4201 步
+- **提取时间**: 2026-04-25T17:37:47
+
+
 ## 三、历史故障案例
 
 ### 案例1: CPU 飙升导致服务降级

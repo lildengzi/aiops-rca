@@ -1,76 +1,27 @@
-"""
-运维专家节点实现
-"""
-from datetime import datetime
-from langchain_core.messages import HumanMessage, SystemMessage
+from __future__ import annotations
 
-from workflow.utils import _create_llm, _calculate_optimal_parallel_degree
-from agents.master_agent import get_master_prompt
+from agents.master_agent import MasterAgent
+from workflow.graph_state import GraphState
 from workflow.state import RCAState
+from workflow.utils import record_node_event
 
 
-def master_node(state: RCAState) -> dict:
-    """
-    运维专家节点：分析问题、制定排查计划。
-    故障类型自动检测由 detect_fault_node 负责，此处直接基于已确定类型制定计划。
-    """
-    llm = _create_llm()
-    iteration = state.get("iteration", 0)
-    ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+def master_node(state: RCAState, agent: MasterAgent) -> dict:
+    result = agent.run(state)
+    state.plan = result
+    return record_node_event(state, agent.name, result)
 
-    # 计算最优并行度
-    parallel_degree = _calculate_optimal_parallel_degree()
 
-    fault_type = state.get("fault_type", "unknown")
-    detected_type = state.get("detected_fault_type", "")
-
-    # 构建上下文
-    context_parts = []
-    if iteration > 0:
-        context_parts.append(f"=== 第 {iteration} 轮迭代结果 ===")
-        if state.get("metric_results"):
-            context_parts.append(f"【指标分析结果】\n{state['metric_results'][-1]}")
-        if state.get("log_results"):
-            context_parts.append(f"【日志分析结果】\n{state['log_results'][-1]}")
-        if state.get("trace_results"):
-            context_parts.append(f"【链路分析结果】\n{state['trace_results'][-1]}")
-        if state.get("analyst_decision"):
-            context_parts.append(f"【值班长决策】\n{state['analyst_decision']}")
-
-    context = "\n\n".join(context_parts)
-    system_prompt = get_master_prompt(context, detected_type)
-
-    # 构建用户消息
-    user_msg_parts = [
-        f"当前时间: {ts}",
-        f"用户问题: {state['user_query']}",
-        f"当前迭代轮次: {iteration + 1}/{state['max_iterations']}",
-        f"当前系统并行度: {parallel_degree}",
-    ]
-
-    if detected_type:
-        user_msg_parts.append(f"系统基于观测数据检测到异常模式: {detected_type}（仅供参考，请结合具体证据制定排查计划）。")
-    elif fault_type != "unknown":
-        user_msg_parts.append(f"用户指定加载的数据集标签: {fault_type}（仅供参考，请基于实际观测证据制定排查计划）。")
-    else:
-        user_msg_parts.append("当前未预设故障类型，请根据观测数据表现制定排查计划。")
-
-    user_msg = "\n".join(user_msg_parts) + "\n\n请制定本轮排查计划。"
-
-    messages = [SystemMessage(content=system_prompt), HumanMessage(content=user_msg)]
-    response = llm.invoke(messages)
-    plan = response.content
-
-    log_entry = f"[{ts}] 运维专家 - 第{iteration+1}轮计划:\n{plan}"
-    if detected_type:
-        log_entry += f"\n→ 检测到的异常模式: {detected_type}"
-    elif fault_type != "unknown":
-        log_entry += f"\n→ 用户指定数据集标签: {fault_type}"
-
+def master_graph_node(graph_state: GraphState, agent: MasterAgent) -> GraphState:
+    state = RCAState.from_graph_state(graph_state)
+    state.iteration += 1
+    result = master_node(state, agent)
     return {
-        "master_plan": plan,
-        "iteration": iteration + 1,
-        "parallel_degree": parallel_degree,
-        "full_analysis": state.get("full_analysis", True),
-        "thinking_log": [log_entry],
+        "iteration": state.iteration,
+        "plan": result,
+        "knowledge_hits": state.knowledge_hits,
+        "llm_enabled": state.llm_enabled,
+        "llm_reason": state.llm_reason,
+        "think_log_path": state.think_log_path,
+        "node_history": state.node_history[-1:],
     }

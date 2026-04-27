@@ -1,0 +1,121 @@
+{
+  "benchmark_config": {
+    "csv_path": "D:\\downloads\\aiops_rca\\benchmark\\data_with_error.csv",
+    "sample_count": 2,
+    "window_size": 20,
+    "seed": 42,
+    "baseline_threshold": 3.0,
+    "candidate_windows": 4162,
+    "evaluated_windows": 2
+  },
+  "aggregate": {
+    "baseline": {
+      "samples": 2,
+      "service_hit_rate": 1.0,
+      "fault_type_hit_rate": 1.0,
+      "avg_confidence": null,
+      "decision_stop_rate": 1.0,
+      "accuracy": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0
+    },
+    "rca": {
+      "samples": 2,
+      "service_hit_rate": 0.5,
+      "fault_type_hit_rate": 1.0,
+      "avg_confidence": 0.79,
+      "decision_stop_rate": 1.0,
+      "accuracy": 0.5,
+      "precision": 0.5,
+      "recall": 0.5,
+      "f1": 0.5
+    }
+  },
+  "samples": [
+    {
+      "sample_id": 1,
+      "window": {
+        "start": 1685200793,
+        "end": 1685200812,
+        "start_index": 205,
+        "window_size": 20
+      },
+      "prompt": "main memory 异常，请分析根因",
+      "pseudo_ground_truth": {
+        "service": "main",
+        "fault_type": "memory",
+        "metric": "mem",
+        "anomaly_count": 2,
+        "peak": 66691072.0
+      },
+      "baseline": {
+        "service": "main",
+        "fault_type": "memory",
+        "metric": "mem",
+        "anomaly_count": 2,
+        "peak": 66691072.0,
+        "hits": {
+          "service_hit": true,
+          "fault_type_hit": true
+        },
+        "decision": "stop",
+        "confidence": null
+      },
+      "rca": {
+        "service": "frontend",
+        "fault_type": "memory",
+        "decision": "stop",
+        "confidence": 0.82,
+        "hits": {
+          "service_hit": false,
+          "fault_type_hit": true
+        },
+        "report_path": "D:\\downloads\\aiops_rca\\reports\\rca_report_20260427_113452.md",
+        "think_log_path": "D:\\downloads\\aiops_rca\\think_log\\think_log_data_with_error_20260427_113452.md"
+      }
+    },
+    {
+      "sample_id": 2,
+      "window": {
+        "start": 1685201502,
+        "end": 1685201521,
+        "start_index": 914,
+        "window_size": 20
+      },
+      "prompt": "cartservice CPU 升高，请分析根因",
+      "pseudo_ground_truth": {
+        "service": "cartservice",
+        "fault_type": "cpu",
+        "metric": "cpu",
+        "anomaly_count": 1,
+        "peak": 6.9451460885504375
+      },
+      "baseline": {
+        "service": "cartservice",
+        "fault_type": "cpu",
+        "metric": "cpu",
+        "anomaly_count": 1,
+        "peak": 6.9451460885504375,
+        "hits": {
+          "service_hit": true,
+          "fault_type_hit": true
+        },
+        "decision": "stop",
+        "confidence": null
+      },
+      "rca": {
+        "service": "cartservice",
+        "fault_type": "cpu",
+        "decision": "stop",
+        "confidence": 0.76,
+        "hits": {
+          "service_hit": true,
+          "fault_type_hit": true
+        },
+        "report_path": "D:\\downloads\\aiops_rca\\reports\\rca_report_20260427_113453.md",
+        "think_log_path": "D:\\downloads\\aiops_rca\\think_log\\think_log_data_with_error_20260427_113452.md"
+      }
+    }
+  ]
+}

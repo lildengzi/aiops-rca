@@ -12,6 +12,7 @@
 注意：知识库返回的所有信息仅作为参考，观测证据优先级高于知识库
 """
 import os
+import json
 from typing import Dict, List, Optional, Any
 
 # 导入模块化组件
@@ -182,6 +183,39 @@ class KnowledgeManager:
             "module_version": "2.1.0 (参考版，不覆盖观测证据)",
             "note": "所有知识库信息仅作参考，观测证据优先级最高"
         }
+
+    def get_baseline_stats(self) -> Dict:
+        """加载 baseline_stats.json，用于异常检测"""
+        baseline_file = os.path.join(KNOWLEDGE_BASE_DIR, "baseline_stats.json")
+        if os.path.exists(baseline_file):
+            try:
+                with open(baseline_file, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except Exception:
+                pass
+        return {}
+
+    def search_fault_cases(self, fault_type=None, service=None) -> List[Dict]:
+        """从 fault_cases.json 中检索案例"""
+        cases_file = os.path.join(KNOWLEDGE_BASE_DIR, "fault_cases.json")
+        if not os.path.exists(cases_file):
+            return []
+        try:
+            with open(cases_file, 'r', encoding='utf-8') as f:
+                cases = json.load(f)
+        except Exception:
+            return []
+        
+        results = []
+        for case in cases:
+            match = True
+            if fault_type is not None and case.get('fault_type') != fault_type:
+                match = False
+            if service is not None and case.get('service') != service:
+                match = False
+            if match:
+                results.append(case)
+        return results
     
 
 

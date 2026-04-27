@@ -1,0 +1,172 @@
+# 提示词：构建 AIOps 多智能体根因分析系统（完整项目交付）
+
+## 角色设定
+你是一名顶尖的 AIOps 系统架构师与 LangChain/LangGraph 专家。请根据以下详细要求，完整实现一个基于**多智能体协作**的微服务故障根因分析系统。该系统的目标是通过整合多个专业智能体（Master、Metric、Log、Trace、Analyst、Reporter），利用 ReAct 推理模式与 RAG 知识库，自动化分析监控数据（CSV 格式），最终输出结构化的根因分析报告，并提供 Web 交互界面。
+
+## 项目背景
+用户已提供两个 CSV 文件作为数据基础：
+- `benchmark/data_with_error.csv`：包含人工标注的故障样本（用于构建知识库）
+- `benchmark/real_data.csv`：无标注的真实监控数据（用于测试）
+
+系统需要从这些 CSV 文件中读取指标、日志、调用链等模拟数据，并将 `data_with_error.csv` 中的故障模式提取为知识库（RAG）。
+
+## 核心要求
+1. **多智能体架构**：实现 6 个智能体，各自配备专用工具，通过 LangGraph 编排工作流。
+2. **ReAct + RAG**：每个智能体具备“推理-行动-观察”循环，并能调用 RAG 知识库辅助决策。
+3. **LangGraph 工作流**：支持条件分支、并行执行、迭代收敛（值班长控制）。
+4. **多模态输入**：Web 界面支持文本、语音（中文）、图表上传三种方式。
+5. **工具层模拟 MCP**：所有工具函数从 CSV 数据中查询（指标、日志、链路、拓扑）。
+6. **透明化记录**：每个智能体的输入、输出、决策依据写入 think_log。
+7. **结构化输出**：生成 Markdown 报告，保存到 `reports/` 目录。
+8. **Web 界面（Streamlit）**：包含用户指定的 5 个页面（故障分析、故障趋势、历史报告、知识库管理、用户反馈）。
+9. **辅助脚本**：`build_knowledge_base.py`（构建 FAISS 知识库）、`benchmark.py`（对比实验）、`defense_demo.py`（答辩演示）。
+
+## 目录结构（必须严格遵循）
+```
+aiops-rca/
+├── main.py
+├── config.py
+├── build_knowledge_base.py
+├── requirements.txt
+├── .env.example
+├── agents/
+│   ├── __init__.py
+│   ├── master_agent.py
+│   ├── metric_agent.py
+│   ├── log_agent.py
+│   ├── trace_agent.py
+│   ├── analyst_agent.py
+│   └── reporter_agent.py
+├── tools/
+│   ├── __init__.py
+│   ├── metric_tools.py
+│   ├── log_tools.py
+│   ├── trace_tools.py
+│   └── topology_tools.py
+├── workflow/
+│   ├── __init__.py
+│   ├── orchestrator.py
+│   ├── builder.py
+│   ├── state.py
+│   ├── utils.py
+│   └── nodes/
+│       ├── __init__.py
+│       ├── detect_fault_node.py
+│       ├── master_node.py
+│       ├── metric_node.py
+│       ├── log_node.py
+│       ├── trace_node.py
+│       ├── analyst_node.py
+│       ├── reporter_node.py
+│       └── aggregate_node.py
+├── ui/
+│   ├── __init__.py
+│   ├── sidebar.py
+│   ├── analysis_page.py
+│   ├── dashboard_page.py
+│   ├── history_page.py
+│   ├── knowledge_page.py
+│   ├── feedback_page.py
+│   ├── voice_input.py
+│   └── image_input.py
+├── input_modules/
+│   ├── __init__.py
+│   ├── voice.py
+│   └── image.py
+├── utils/
+│   ├── __init__.py
+│   ├── data_loader.py
+│   ├── anomaly_detection.py
+│   ├── csv_processor.py
+│   └── service_parser.py
+├── data/                   # 存放用户提供的 CSV 文件（但用户说放在 benchmark 文件夹，你可按实际路径处理）
+├── benchmark/              # 用户已提供 real_data.csv 和 data_with_error.csv
+├── knowledge_base/         # 存储 FAISS 索引和原始知识文档
+├── models/                 # (可选)
+├── reports/                # 自动生成报告
+└── think_log/              # 记录每个智能体的思考日志
+```
+
+## 详细实现要求
+
+### 1. 数据加载与工具实现（`utils/data_loader.py` + `tools/*`）
+- **数据格式**：CSV 文件包含时间戳、各服务的 CPU/内存/延迟/错误数等指标，以及模拟的日志和调用链字段（若无则需生成模拟数据）。用户提供的 `data.csv` 示例中包含了 40+ 列，请按以下规则处理：
+  - 指标列：`*_cpu`, `*_mem`, `*_load`, `*_latency` 等
+  - 日志列：可能没有，你需要从指标异常中**模拟生成**日志消息（例如当 CPU > 90% 时生成一条错误日志）。
+  - 链路列：同样需要根据服务依赖拓扑模拟。拓扑可根据服务名前缀（如 `adservice`, `cartservice`）推断上下游关系（例如 `frontend` → `adservice` → ...）。
+- **工具实现要求**：
+  - `query_service_metrics(service, metric, start, end)` 返回时间序列片段。
+  - `detect_anomaly_zscore(series)` 输出异常点索引。
+  - `query_service_logs(service, start, end)` 返回该时间窗口内的模拟日志列表。
+  - `query_service_traces(service, start, end)` 返回模拟调用链（例如包含根因服务名称和延迟）。
+  - `get_full_topology()` 返回服务依赖图（字典）。
+- **注意**：所有工具必须从 CSV 数据中动态查询，而非硬编码。
+
+### 2. 知识库构建（`build_knowledge_base.py`）
+- 读取 `benchmark/data_with_error.csv`，假设该文件包含 `timestamp`, `service`, `error_type`, `root_cause`, `solution` 等列（若没有，你可以自行设计规则从指标异常中提取故障模式）。
+- 将每条故障模式生成文本块（例如：“故障：adservice CPU飙升，根因：内存泄漏，解决方案：重启服务”）。
+- 使用 `OpenAIEmbeddings` 或 `HuggingFaceEmbeddings` 向量化，存入 FAISS 索引。提供 `retrieve_knowledge(query, k)` 函数。
+
+### 3. 智能体实现（`agents/*.py`）
+- 每个智能体继承或使用 `langchain.agents.AgentExecutor` + `create_react_agent`。
+- **Master Agent**：给定用户告警，输出 JSON 格式的排查计划（包含假设和待执行动作列表）。需调用 RAG 检索类似历史故障。
+- **Metric Agent**：接收任务（service, metric, time_range），调用指标工具，输出异常摘要（是否异常、峰值、异常时间段）。
+- **Log Agent**：接收任务，调用日志工具，输出错误模式（高频错误、堆栈关键词）。
+- **Trace Agent**：接收任务，调用链路工具，输出故障传播路径（如“frontend → adservice → redis”）。
+- **Analyst Agent**：汇总所有证据，输出判断（`stop` 或 `continue`），并给出当前置信度（0~1）和推理依据。若置信度 > 0.8 则停止。
+- **Reporter Agent**：生成最终 Markdown 报告，包含证据表格、根因、修复建议。
+
+### 4. LangGraph 工作流（`workflow/`）
+- **状态定义 (`state.py`)**：包含 `user_input`, `plan`, `evidence`, `iteration`, `max_iter` 等字段。
+- **节点实现**：
+  - `detect_fault_node`：识别故障类型（如 CPU/内存/延迟）。
+  - `master_node`：调用 Master Agent 生成计划。
+  - `metric_node`, `log_node`, `trace_node`：根据计划中的动作并行执行（使用 `langgraph` 的 `Send` API）。
+  - `aggregate_node`：合并所有结果到 `evidence`。
+  - `analyst_node`：调用 Analyst Agent 决策。
+  - `reporter_node`：调用 Reporter Agent。
+- **条件路由**：Analyst 决定 `continue` 则跳回 master_node（重新规划），`stop` 则进入 reporter_node。
+- **最大迭代限制**：避免无限循环（默认 5 次）。
+
+### 5. Web 界面（Streamlit，`ui/` 目录）
+- **侧边栏导航**：5 个页面切换。
+- **故障分析页面**：
+ -  支持投入一个csv文件
+  - 文本输入区（支持自然语言描述）。
+  - 语音录制按钮（调用 `input_modules/voice.py` 转文字）。
+  - 图片上传（调用 `input_modules/image.py` 调用  OCR+简单模型提取异常描述）。
+  - “开始分析”按钮：调用 `orchestrator.run_investigation(user_input)`，并在界面以聊天形式实时显示每个 Agent 的推理与行动过程（从 `think_log` 读取）。
+- **故障趋势页面**：展示历史报告中的故障类型统计（饼图/柱状图）。
+- **历史报告页面**：列出 `reports/*.md`，支持预览和下载。
+- **知识库管理页面**：显示已有知识条目，支持添加/编辑/删除，并重建 FAISS 索引。
+- **用户反馈页面**：对某次分析结果评分（1-5）和文字反馈，存储到 `feedback/feedback.json`。
+
+### 6. 辅助脚本
+- **`benchmark.py`**：从 `real_data.csv` 中随机抽取 10 个时间窗口（每个窗口包含一段连续时间内的数据），分别使用本系统和传统 3-sigma 阈值法进行故障检测，对比准确率、召回率、F1 值，输出结果表格。
+- **`defense_demo.py`**：预设一个典型故障场景（例如 `adservice` CPU 在某个时间段飙升），运行完整的多智能体分析流程，并在控制台打印每个节点的输入/输出，最后展示报告摘要。
+
+### 7. 配置与环境
+- `config.py` 中定义 `MAX_ITERATIONS`, `MODEL_NAME`, `OPENAI_API_KEY`, `FAISS_INDEX_PATH` 等。
+- 使用 `python-dotenv` 加载 `.env`。
+- `requirements.txt` 包含所有依赖（见附注）。
+
+## 代码生成要求
+1. 所有代码使用 **Python 3.10+** 语法。
+2. 每个文件开头添加必要的 `import` 语句。
+3. 添加详细的注释和 docstring。
+4. 异常处理要完善（例如 CSV 文件不存在、API 调用失败等）。
+5. 为了代码可运行，你需要模拟一些必要的外部依赖（如语音识别可使用 `speech_recognition` 调用系统麦克风；图像分析可调用 OpenAI GPT-4V 如果 API key 存在，否则使用模拟返回）。
+6. 由于没有真实的调用链数据，你需要根据服务依赖拓扑生成模拟调用链数据（在 `trace_tools.py` 中实现生成逻辑）。
+
+## 输出格式
+请将每个文件的代码块按照以下格式输出：
+```python
+# 文件：aiops-rca/config.py
+<code>
+```
+并在所有代码之后附上一个简短的 `README.md` 说明如何安装依赖、配置环境、运行系统。
+
+## 重要提醒
+- 用户提供的 CSV 数据量可能较大，工具函数应实现按时间范围过滤（避免一次性加载全部）。
+- 确保 LangGraph 的工作流能够正确并行执行子节点（可使用 `langgraph` 的 `parallel` 分支或 `Send`）。
+- 最终交付的代码必须能**直接运行**（假设用户已安装依赖并设置好 OpenAI API Key）。

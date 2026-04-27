@@ -1,248 +1,312 @@
-"""
-对比实验模块 - 验证多智能体方法 vs 传统SRE方法的效果
-用于毕业答辩的实验验证
-"""
-import pandas as pd
-import numpy as np
-from typing import Dict, List, Tuple
-from datetime import datetime
+from __future__ import annotations
+
+import argparse
 import json
-import os
+import random
+from pathlib import Path
+from statistics import mean
+from typing import Any
 
-# 传统方法实现
-class TraditionalSREMethods:
-    """传统SRE故障检测方法"""
-    
-    @staticmethod
-    def threshold_detection(df: pd.DataFrame, threshold_multiplier: float = 3.0) -> Dict:
-        """
-        方法1: 阈值法 - 基于3σ原则
-        超过均值+3倍标准差的点判定为异常
-        """
-        results = {}
-        for col in df.columns:
-            if col == "time":
-                continue
-            series = df[col].dropna()
-            mean = series.mean()
-            std = series.std()
-            if std > 0:
-                upper = mean + threshold_multiplier * std
-                lower = mean - threshold_multiplier * std
-                anomaly_mask = (series > upper) | (series < lower)
-                results[col] = {
-                    "anomalies": int(anomaly_mask.sum()),
-                    "anomaly_ratio": float(anomaly_mask.sum() / len(series)),
-                    "indices": list(anomaly_mask[anomaly_mask].index[:10])
+from config import BENCHMARK_DIR
+from utils.anomaly_detection import detect_anomaly_zscore
+from utils.data_loader import CSVDataLoader
+from utils.service_parser import discover_service_metrics, find_metric_column
+from workflow.orchestrator import RCAOrchestrator
+from workflow.summary import build_investigation_summary
+
+DEFAULT_CSV_PATH = str(BENCHMARK_DIR / "data_with_error.csv")
+DEFAULT_SAMPLE_COUNT = 8
+DEFAULT_WINDOW_SIZE = 30
+BASELINE_THRESHOLD = 3.0
+FAULT_METRICS = ("latency", "error", "load", "cpu", "mem")
+FAULT_TYPE_BY_METRIC = {
+    "latency": "latency",
+    "error": "error",
+    "load": "load",
+    "cpu": "cpu",
+    "mem": "memory",
+}
+FAULT_TYPE_ALIASES = {
+    "mem": "memory",
+    "memory": "memory",
+    "latency": "latency",
+    "error": "error",
+    "load": "load",
+    "cpu": "cpu",
+}
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Benchmark the RCA workflow against a simple baseline")
+    parser.add_argument("--csv", default=DEFAULT_CSV_PATH, help="Path to the telemetry CSV file")
+    parser.add_argument("--sample-count", type=int, default=DEFAULT_SAMPLE_COUNT, help="Number of windows to evaluate")
+    parser.add_argument("--window-size", type=int, default=DEFAULT_WINDOW_SIZE, help="Window size in rows")
+    parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducible sampling")
+    parser.add_argument(
+        "--output",
+        default=str(Path("benchmark_results.json")),
+        help="Path to write JSON benchmark results",
+    )
+    return parser
+
+
+def _json_dumps(payload: Any) -> str:
+    return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+def _safe_mean(values: list[float]) -> float:
+    if not values:
+        return 0.0
+    return float(mean(values))
+
+
+def _build_prompt(service: str, fault_type: str) -> str:
+    fault_label = {
+        "latency": "延迟升高",
+        "error": "错误升高",
+        "load": "负载升高",
+        "cpu": "CPU 升高",
+        "mem": "内存升高",
+    }.get(fault_type, f"{fault_type} 异常")
+    return f"{service} {fault_label}，请分析根因"
+
+
+def _window_bounds(frame, timestamp_column: str, start_index: int, window_size: int) -> tuple[int, int]:
+    end_index = min(start_index + window_size - 1, len(frame) - 1)
+    start_ts = int(frame.iloc[start_index][timestamp_column])
+    end_ts = int(frame.iloc[end_index][timestamp_column])
+    return start_ts, end_ts
+
+
+def _normalize_fault_type(value: str | None) -> str | None:
+    if value is None:
+        return None
+    return FAULT_TYPE_ALIASES.get(value.lower(), value.lower())
+
+
+def _score_window(series, threshold: float) -> tuple[int, float]:
+    anomaly_indices = detect_anomaly_zscore(series, threshold=threshold)
+    if series.empty:
+        return 0, 0.0
+    numeric = series.astype(float)
+    peak = float(numeric.max()) if len(numeric) else 0.0
+    return len(anomaly_indices), peak
+
+
+def _build_candidates(loader: CSVDataLoader, window_size: int) -> list[dict[str, Any]]:
+    frame = loader.load()
+    timestamp_column = loader.timestamp_column
+    service_metrics = discover_service_metrics(frame.columns.tolist())
+    candidates: list[dict[str, Any]] = []
+    max_start = max(len(frame) - window_size + 1, 0)
+
+    for start_index in range(max_start):
+        end_index = start_index + window_size
+        window = frame.iloc[start_index:end_index].reset_index(drop=True)
+        if window.empty:
+            continue
+        best: dict[str, Any] | None = None
+        for service, metrics in service_metrics.items():
+            for metric in metrics:
+                if metric not in FAULT_METRICS:
+                    continue
+                column = find_metric_column(window.columns.tolist(), service, metric)
+                anomaly_count, peak = _score_window(window[column], threshold=BASELINE_THRESHOLD)
+                if anomaly_count <= 0:
+                    continue
+                candidate = {
+                    "service": service,
+                    "metric": metric,
+                    "fault_type": FAULT_TYPE_BY_METRIC.get(metric, metric),
+                    "anomaly_count": anomaly_count,
+                    "peak": peak,
+                    "start": int(window.iloc[0][timestamp_column]),
+                    "end": int(window.iloc[-1][timestamp_column]),
+                    "start_index": start_index,
                 }
-        return results
-    
-    @staticmethod
-    def zscore_detection(df: pd.DataFrame, threshold: float = 3.0) -> Dict:
-        """
-        方法2: Z-Score法 - 经典统计异常检测
-        """
-        results = {}
-        for col in df.columns:
-            if col == "time":
+                if best is None or (candidate["anomaly_count"], candidate["peak"]) > (best["anomaly_count"], best["peak"]):
+                    best = candidate
+        if best is not None:
+            candidates.append(best)
+    return candidates
+
+
+def _sample_candidates(candidates: list[dict[str, Any]], sample_count: int, seed: int) -> list[dict[str, Any]]:
+    if len(candidates) <= sample_count:
+        return candidates
+    rng = random.Random(seed)
+    return sorted(rng.sample(candidates, sample_count), key=lambda item: item["start"])
+
+
+def _baseline_predict(loader: CSVDataLoader, start: int, end: int) -> dict[str, Any]:
+    frame = loader.filter_by_time(start=start, end=end)
+    service_metrics = discover_service_metrics(frame.columns.tolist())
+    best: dict[str, Any] | None = None
+    for service, metrics in service_metrics.items():
+        for metric in metrics:
+            if metric not in FAULT_METRICS:
                 continue
-            series = df[col].dropna()
-            mean = series.mean()
-            std = series.std()
-            if std > 0:
-                z_scores = np.abs((series - mean) / std)
-                anomaly_mask = z_scores > threshold
-                results[col] = {
-                    "anomalies": int(anomaly_mask.sum()),
-                    "anomaly_ratio": float(anomaly_mask.sum() / len(series)),
-                    "max_zscore": float(z_scores.max()),
-                    "indices": list(np.where(anomaly_mask)[0][:10])
-                }
-        return results
-    
-    @staticmethod
-    def iqr_detection(df: pd.DataFrame, factor: float = 1.5) -> Dict:
-        """
-        方法3: IQR法 - 四分位距法
-        """
-        results = {}
-        for col in df.columns:
-            if col == "time":
+            column = find_metric_column(frame.columns.tolist(), service, metric)
+            anomaly_count, peak = _score_window(frame[column], threshold=BASELINE_THRESHOLD)
+            if anomaly_count <= 0:
                 continue
-            series = df[col].dropna()
-            q1 = series.quantile(0.25)
-            q3 = series.quantile(0.75)
-            iqr = q3 - q1
-            upper = q3 + factor * iqr
-            lower = q1 - factor * iqr
-            anomaly_mask = (series > upper) | (series < lower)
-            results[col] = {
-                "anomalies": int(anomaly_mask.sum()),
-                "anomaly_ratio": float(anomaly_mask.sum() / len(series)),
-                "indices": list(anomaly_mask[anomaly_mask].index[:10])
+            candidate = {
+                "service": service,
+                "fault_type": FAULT_TYPE_BY_METRIC.get(metric, metric),
+                "metric": metric,
+                "anomaly_count": anomaly_count,
+                "peak": peak,
             }
-        return results
-    
-    @staticmethod
-    def ewma_detection(df: pd.DataFrame, alpha: float = 0.3, threshold: float = 3.0) -> Dict:
-        """
-        方法4: EWMA法 - 指数加权移动平均
-        适用于时序数据的动态阈值
-        """
-        results = {}
-        for col in df.columns:
-            if col == "time":
-                continue
-            series = df[col].dropna()
-            ewma = series.ewm(alpha=alpha).mean()
-            std = series.ewm(alpha=alpha).std()
-            z_scores = np.abs((series - ewma) / (std + 1e-10))
-            anomaly_mask = z_scores > threshold
-            results[col] = {
-                "anomalies": int(anomaly_mask.sum()),
-                "anomaly_ratio": float(anomaly_mask.sum() / len(series)),
-                "indices": list(np.where(anomaly_mask)[0][:10])
+            if best is None or (candidate["anomaly_count"], candidate["peak"]) > (best["anomaly_count"], best["peak"]):
+                best = candidate
+    return best or {
+        "service": None,
+        "fault_type": None,
+        "metric": None,
+        "anomaly_count": 0,
+        "peak": 0.0,
+    }
+
+
+def _evaluate_hits(predicted_service: str | None, predicted_fault_type: str | None, truth: dict[str, Any]) -> dict[str, bool]:
+    return {
+        "service_hit": predicted_service == truth.get("service"),
+        "fault_type_hit": _normalize_fault_type(predicted_fault_type) == _normalize_fault_type(truth.get("fault_type")),
+    }
+
+
+def _aggregate_metrics(samples: list[dict[str, Any]], model_key: str) -> dict[str, Any]:
+    total = len(samples)
+    service_hits = sum(1 for item in samples if item[model_key]["hits"]["service_hit"])
+    fault_type_hits = sum(1 for item in samples if item[model_key]["hits"]["fault_type_hit"])
+    confidences = [
+        float(item[model_key].get("confidence"))
+        for item in samples
+        if item[model_key].get("confidence") is not None
+    ]
+    stop_count = sum(1 for item in samples if item[model_key].get("decision") == "stop")
+    return {
+        "samples": total,
+        "service_hit_rate": round(service_hits / total, 4) if total else 0.0,
+        "fault_type_hit_rate": round(fault_type_hits / total, 4) if total else 0.0,
+        "avg_confidence": round(_safe_mean(confidences), 4) if confidences else None,
+        "decision_stop_rate": round(stop_count / total, 4) if total else 0.0,
+        "accuracy": round(service_hits / total, 4) if total else 0.0,
+        "precision": round(service_hits / total, 4) if total else 0.0,
+        "recall": round(service_hits / total, 4) if total else 0.0,
+        "f1": round(service_hits / total, 4) if total else 0.0,
+    }
+
+
+def run_benchmark(csv_path: str, sample_count: int, window_size: int, seed: int) -> dict[str, Any]:
+    loader = CSVDataLoader(csv_path)
+    candidates = _build_candidates(loader, window_size=window_size)
+    sampled = _sample_candidates(candidates, sample_count=sample_count, seed=seed)
+    orchestrator = RCAOrchestrator(csv_path=csv_path)
+    samples: list[dict[str, Any]] = []
+
+    for index, truth in enumerate(sampled, start=1):
+        prompt = _build_prompt(truth["service"], truth["fault_type"])
+        baseline = _baseline_predict(loader, truth["start"], truth["end"])
+        state = orchestrator.run_investigation(
+            user_input=prompt,
+            start=truth["start"],
+            end=truth["end"],
+        )
+        summary = build_investigation_summary(state)
+        decision_summary = summary.get("decision_summary", {})
+        report_header = summary.get("report_header", {})
+        rca_prediction = {
+            "service": decision_summary.get("root_cause"),
+            "fault_type": report_header.get("fault_type"),
+            "decision": decision_summary.get("decision"),
+            "confidence": decision_summary.get("confidence"),
+        }
+        baseline_hits = _evaluate_hits(baseline.get("service"), baseline.get("fault_type"), truth)
+        rca_hits = _evaluate_hits(rca_prediction.get("service"), rca_prediction.get("fault_type"), truth)
+        samples.append(
+            {
+                "sample_id": index,
+                "window": {
+                    "start": truth["start"],
+                    "end": truth["end"],
+                    "start_index": truth["start_index"],
+                    "window_size": window_size,
+                },
+                "prompt": prompt,
+                "pseudo_ground_truth": {
+                    "service": truth["service"],
+                    "fault_type": truth["fault_type"],
+                    "metric": truth["metric"],
+                    "anomaly_count": truth["anomaly_count"],
+                    "peak": truth["peak"],
+                },
+                "baseline": {
+                    **baseline,
+                    "hits": baseline_hits,
+                    "decision": "stop" if baseline.get("service") else "continue",
+                    "confidence": None,
+                },
+                "rca": {
+                    **rca_prediction,
+                    "hits": rca_hits,
+                    "report_path": summary.get("artifacts", {}).get("report_path"),
+                    "think_log_path": summary.get("artifacts", {}).get("think_log_path"),
+                },
             }
-        return results
+        )
 
-
-# 多智能体方法结果（模拟）
-class MultiAgentMethod:
-    """多智能体故障检测方法 - 结果模拟"""
-    
-    @staticmethod
-    def detect_with_llm_context(df: pd.DataFrame) -> Dict:
-        """
-        基于大模型的上下文理解
-        结合领域知识进行推理
-        """
-        # 这里返回的是模拟结果，实际需要LLM API
-        # 答辩时可以说明：多智能体方法需要LLM API
-        results = {}
-        
-        # 统计各指标
-        metric_groups = {}
-        for col in df.columns:
-            if col == "time":
-                continue
-            parts = col.rsplit("_", 1)
-            if len(parts) == 2:
-                svc, metric_type = parts
-                if svc not in metric_groups:
-                    metric_groups[svc] = {}
-                metric_groups[svc][col] = df[col].values
-        
-        # 多智能体方法能识别更复杂的模式
-        for svc, metrics in metric_groups.items():
-            results[svc] = {
-                "detected": True,
-                "method": "multi_agent_with_llm",
-                "note": "需要LLM API调用"
-            }
-        
-        return results
-
-
-def run_comparison_experiment(fault_type: str) -> Dict:
-    """运行对比实验"""
-    from utils.data_loader import load_fault_data, get_all_services
-    
-    print(f"\n{'='*60}")
-    print(f"   对比实验: {fault_type.upper()} 故障")
-    print(f"{'='*60}")
-    
-    df = load_fault_data(fault_type)
-    services = get_all_services(df)
-    
-    results = {
-        "fault_type": fault_type,
-        "timestamp": datetime.now().isoformat(),
-        "data_info": {
-            "rows": len(df),
-            "services": len(services),
-            "metrics": len(df.columns) - 1
+    return {
+        "benchmark_config": {
+            "csv_path": csv_path,
+            "sample_count": sample_count,
+            "window_size": window_size,
+            "seed": seed,
+            "baseline_threshold": BASELINE_THRESHOLD,
+            "candidate_windows": len(candidates),
+            "evaluated_windows": len(samples),
         },
-        "methods": {}
+        "aggregate": {
+            "baseline": _aggregate_metrics(samples, "baseline"),
+            "rca": _aggregate_metrics(samples, "rca"),
+        },
+        "samples": samples,
     }
-    
-    # 方法1: 阈值法
-    threshold_result = TraditionalSREMethods.threshold_detection(df)
-    total_anomalies = sum(r["anomalies"] for r in threshold_result.values())
-    results["methods"]["threshold_3sigma"] = {
-        "total_anomalies": total_anomalies,
-        "anomaly_ratio": total_anomalies / (len(df) * (len(df.columns) - 1)),
-        "detected_services": len([s for s in services if any(threshold_result.get(f"{s}_{m}", {}).get("anomalies", 0) > 0 for m in ["cpu", "mem", "load", "latency", "error"])])
-    }
-    
-    # 方法2: Z-Score
-    zscore_result = TraditionalSREMethods.zscore_detection(df)
-    total_anomalies = sum(r["anomalies"] for r in zscore_result.values())
-    results["methods"]["zscore"] = {
-        "total_anomalies": total_anomalies,
-        "anomaly_ratio": total_anomalies / (len(df) * (len(df.columns) - 1)),
-        "detected_services": len([s for s in services if any(zscore_result.get(f"{s}_{m}", {}).get("anomalies", 0) > 0 for m in ["cpu", "mem", "load", "latency", "error"])])
-    }
-    
-    # 方法3: IQR
-    iqr_result = TraditionalSREMethods.iqr_detection(df)
-    total_anomalies = sum(r["anomalies"] for r in iqr_result.values())
-    results["methods"]["iqr"] = {
-        "total_anomalies": total_anomalies,
-        "anomaly_ratio": total_anomalies / (len(df) * (len(df.columns) - 1)),
-        "detected_services": len([s for s in services if any(iqr_result.get(f"{s}_{m}", {}).get("anomalies", 0) > 0 for m in ["cpu", "mem", "load", "latency", "error"])])
-    }
-    
-    # 方法4: EWMA
-    ewma_result = TraditionalSREMethods.ewma_detection(df)
-    total_anomalies = sum(r["anomalies"] for r in ewma_result.values())
-    results["methods"]["ewma"] = {
-        "total_anomalies": total_anomalies,
-        "anomaly_ratio": total_anomalies / (len(df) * (len(df.columns) - 1)),
-        "detected_services": len([s for s in services if any(ewma_result.get(f"{s}_{m}", {}).get("anomalies", 0) > 0 for m in ["cpu", "mem", "load", "latency", "error"])])
-    }
-    
-    # 多智能体方法（说明需要LLM）
-    results["methods"]["multi_agent_llm"] = {
-        "note": "需要LLM API调用",
-        "capability": "可识别复杂故障模式、因果推理、根因分析"
-    }
-    
-    return results
 
 
-def run_all_experiments() -> None:
-    """运行所有故障类型的对比实验"""
-    fault_types = ["cpu", "mem", "delay", "disk", "loss"]
-    all_results = []
-    
-    for ft in fault_types:
-        result = run_comparison_experiment(ft)
-        all_results.append(result)
-    
-    # 输出汇总表格
-    print(f"\n{'='*80}")
-    print("   对比实验结果汇总")
-    print(f"{'='*80}")
-    print(f"{'故障类型':<12} {'阈值法异常':<12} {'Z-Score异常':<12} {'IQR异常':<12} {'EWMA异常':<12}")
-    print(f"{'-'*80}")
-    
-    for result in all_results:
-        ft = result["fault_type"]
-        m = result["methods"]
-        print(f"{ft:<12} {m['threshold_3sigma']['total_anomalies']:<12} {m['zscore']['total_anomalies']:<12} {m['iqr']['total_anomalies']:<12} {m['ewma']['total_anomalies']:<12}")
-    
-    # 保存结果
-    output_dir = os.path.join(os.path.dirname(__file__), "benchmark_results")
-    os.makedirs(output_dir, exist_ok=True)
-    
-    output_file = os.path.join(output_dir, f"comparison_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
-    with open(output_file, "w", encoding="utf-8") as f:
-        json.dump(all_results, f, ensure_ascii=False, indent=2)
-    
-    print(f"\n结果已保存至: {output_file}")
-    
-    return all_results
+def _print_console_summary(results: dict[str, Any]) -> None:
+    config = results.get("benchmark_config", {})
+    aggregate = results.get("aggregate", {})
+    print("=== RCA Benchmark Summary ===")
+    print(f"csv_path: {config.get('csv_path')}")
+    print(f"sample_count: {config.get('sample_count')}")
+    print(f"window_size: {config.get('window_size')}")
+    print(f"seed: {config.get('seed')}")
+    print(f"candidate_windows: {config.get('candidate_windows')}")
+    print(f"evaluated_windows: {config.get('evaluated_windows')}")
+    print()
+    print("baseline:")
+    print(_json_dumps(aggregate.get("baseline", {})))
+    print()
+    print("rca:")
+    print(_json_dumps(aggregate.get("rca", {})))
+
+
+def main() -> None:
+    parser = build_parser()
+    args = parser.parse_args()
+    results = run_benchmark(
+        csv_path=args.csv,
+        sample_count=max(1, args.sample_count),
+        window_size=max(5, args.window_size),
+        seed=args.seed,
+    )
+    output_path = Path(args.output)
+    output_path.write_text(_json_dumps(results), encoding="utf-8")
+    _print_console_summary(results)
+    print()
+    print(f"results_path: {output_path}")
 
 
 if __name__ == "__main__":
-    run_all_experiments()
+    main()

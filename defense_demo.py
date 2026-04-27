@@ -1,209 +1,179 @@
-"""
-答辩演示脚本 - 展示系统优势 
-输出可直接用于PPT的数据
-"""
-import pandas as pd
-import numpy as np
+from __future__ import annotations
+
+import argparse
 import json
-from datetime import datetime
-import sys
-import os
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from pathlib import Path
+from typing import Any
 
-from utils.data_loader import load_fault_data, get_all_services
-from utils.anomaly_detection import detect_anomalies_zscore
+from config import BENCHMARK_DIR
+from workflow.orchestrator import RCAOrchestrator
+from workflow.summary import DEFAULT_ANALYSIS_QUESTION, build_investigation_summary
 
-
-def print_section(title):
-    print(f"\n{'#'*70}")
-    print(f"  {title}")
-    print(f"{'#'*70}")
+DEFAULT_CSV_PATH = str(BENCHMARK_DIR / "real_data.csv")
 
 
-def defense_demo():
-    """答辩演示主函数"""
-    
-    print_section("AIOps 多智能体故障检测系统 - 答辩演示")
-    print(f"演示时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    
-    # ===========================================================================
-    # 第一部分：数据集介绍
-    # ===========================================================================
-    print_section("一、实验数据概览")
-    
-    fault_types = {
-        "cpu": "data1.csv - 监控样本（CPU相关指标）",
-        "mem": "data2.csv - 监控样本（内存相关指标）",
-        "delay": "data3.csv - 监控样本（延迟相关指标）",
-        "disk": "data4.csv - 监控样本（磁盘相关指标）",
-        "loss": "data5.csv - 监控样本（网络相关指标）"
-    }
-    
-    data_summary = []
-    print("\n| 数据集 | 行数 | 服务数 | 指标数 | 数据描述 |")
-    print("|--------|------|--------|--------|----------|")
-    
-    for ft, desc in fault_types.items():
-        df = load_fault_data(ft)
-        services = get_all_services(df)
-        metrics = len(df.columns) - 1
-        print(f"| {ft.upper():<8} | {len(df):<4} | {len(services):<6} | {metrics:<6} | {desc} |")
-        data_summary.append({
-            "fault_type": ft,
-            "rows": len(df),
-            "services": len(services),
-            "metrics": metrics,
-            "description": desc
-        })
-    
-    # ===========================================================================
-    # 第二部分：传统方法局限性展示
-    # ===========================================================================
-    print_section("二、传统SRE方法局限性分析")
-    
-    print("""
-传统故障检测方法依赖固定阈值或简单统计，存在以下问题：
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Run a standard RCA defense demo")
+    parser.add_argument("--csv", default=DEFAULT_CSV_PATH, help="Path to the telemetry CSV file")
+    parser.add_argument(
+        "--input",
+        default=DEFAULT_ANALYSIS_QUESTION,
+        help="Natural language alert or symptom description",
+    )
+    parser.add_argument("--start", type=int, default=None, help="Inclusive start timestamp")
+    parser.add_argument("--end", type=int, default=None, help="Inclusive end timestamp")
+    parser.add_argument("--json", action="store_true", help="Print the unified summary JSON only")
+    parser.add_argument("--verbose", action="store_true", help="Print full node payloads")
+    parser.add_argument(
+        "--report-preview-chars",
+        type=int,
+        default=1200,
+        help="Number of report characters to preview in text mode",
+    )
+    return parser
 
-1. 阈值法(Threshold)：依赖人工设定阈值，泛化能力弱
-2. Z-Score：只能检测单点异常，无法识别复杂模式
-3. IQR：受极端值影响大，实时性差
-""")
-    
-    # 实际演示传统方法的误报
-    ft = "cpu"
-    df = load_fault_data(ft)
-    
-    print(f"\n实验：{ft.upper()}故障数据 - 传统方法检测结果")
-    print("-"*50)
-    
-    # 随机抽取几个指标展示误报情况
-    sample_metrics = ["cartservice_cpu", "checkoutservice_cpu", "frontend_cpu"]
-    
-    print(f"\n| 指标 | 均值 | 标准差 | Z-Score异常数 | 误报风险 |")
-    print(f"|------|------|--------|-------------|----------|")
-    
-    for metric in sample_metrics:
-        if metric in df.columns:
-            series = df[metric]
-            mean = series.mean()
-            std = series.std()
-            anomaly = detect_anomalies_zscore(series)
-            
-            # 判断是否为正常波动vs异常
-            is_false_alarm = anomaly["anomaly_score"] < 0.3 and anomaly.get("anomaly_indices", []) > 0
-            risk = "高" if is_false_alarm else "低"
-            
-            anom_count = len(anomaly.get("anomaly_indices", []))
-            print(f"| {metric:<16} | {mean:<6.2f} | {std:<8.2f} | {anom_count:<11} | {risk:<8} |")
-    
-    # ===========================================================================
-    # 第三部分：多智能体方法优势
-    # ===========================================================================
-    print_section("三、多智能体方法核心优势")
-    
-    print("""
-| 对比维度 | 传统方法 | 多智能体方法 |
-|---------|----------|--------------|
-| 故障识别 | 单一阈值 | 上下文理解 |
-| 根因分析 | 无 | 因果推理 |
-| 维修建议 | 无 | 智能推荐 |
-| 知识利用 | 固定规则 | 大模型+RAG |
-| 泛化能力 | 弱 | 强 |
-| 可解释性 | 低 | 高 |
-""")
-    
-    print("""
-多智能体架构：
-  ├─ 运维专家(Master) - 任务规划与调度
-  ├─ 指标分析专家(Metric) - 时序异常检测
-  ├─ 日志分析专家(Log) - 错误模式提取
-  ├─ 链路分析专家(Trace) - 故障传播分析
-  ├─ 值班长(Analyst) - 证据整合与决策
-  └─ 运营专家(Reporter) - 报告生成
-""")
-    
-    # ===========================================================================
-    # 第四部分：实际检测效果对比
-    # ===========================================================================
-    print_section("四、异常检测效果对比")
-    
-    print("\n| 故障类型 | 传统Z-Score检测 | 本系统检测 | 提升比例 |")
-    print("|---------|---------------|-----------|---------|")
-    
-    total_old = 0
-    total_new = 0
-    
-    for ft, desc in fault_types.items():
-        df = load_fault_data(ft)
-        services = get_all_services(df)
-        
-        # 传统Z-Score
-        old_count = 0
-        for svc in services:
-            cols = [c for c in df.columns if c.startswith(f"{svc}_")]
-            for col in cols:
-                if col != "time":
-                    anomaly = detect_anomalies_zscore(df[col])
-                    if anomaly["is_anomalous"]:
-                        old_count += 1
-        
-        # 多智能体方法 - 需要LLM但会结合RAG和知识库
-        # 模拟展示：多智能体能识别更精确的故障模式
-        new_count = int(old_count * 1.2)  # 假设提升20%
-        
-        print(f"| {ft.upper():<10} | {old_count:<13} | {new_count:<9} | +20% |")
-        
-        total_old += old_count
-        total_new += new_count
-    
-    print("|---------|---------------|-----------|---------|")
-    print(f"| 合计   | {total_old:<13} | {total_new:<9} | +20% |")
-    
-    # ===========================================================================
-    # 第五部分：PPT可直接使用的截图数据
-    # ===========================================================================
-    print_section("五、PPT展示数据汇总")
-    
-    print(f"""
-【图1：系统架构】
-(见SYSTEM_DESIGN.md中的架构图)
 
-【图2：数据集统计】
-共5个数据集，{sum(d['rows'] for d in data_summary)}行数据，{sum(d['services'] for d in data_summary)}个服务
+def _json_dumps(payload: Any) -> str:
+    return json.dumps(payload, ensure_ascii=False, indent=2)
 
-【图3：异常检测对比】
-传统方法检测异常: {total_old} 个
-多智能体方法检测异常: {total_new} 个
-提升: +{(total_new-total_old)/total_old*100:.1f}%
 
-【图4：功能对比】
-| 功能 | 传统SRE | 本系统 |
-|------|---------|-------|
-| 自动故障分类 | ❌ | ✅ |
-| 根因分析 | ❌ | ✅ |
-| 维修建议 | ❌ | ✅ |
-| 知识推理 | ❌ | ✅ |
-""")
-    
-    # ===========================================================================
-    # 第六部分：运行命令
-    # ===========================================================================
-    print_section("六、系统运行命令")
-    
-    print("""
-# 对比实验
-python benchmark.py
+def _truncate(text: str, limit: int) -> str:
+    if len(text) <= limit:
+        return text
+    return text[:limit].rstrip() + "\n..."
 
-# 构建知识库
-python build_knowledge_base.py
 
-# Web界面（需配置API Key）
-streamlit run app.py
-""")
-    
-    print_section("演示结束")
-    print("\n系统已就绪，可用于答辩！")
+def _format_node_summary(entry: dict[str, Any], verbose: bool) -> str:
+    payload = entry.get("payload") if isinstance(entry, dict) else {}
+    if not isinstance(payload, dict):
+        payload = {}
+    lines = [
+        f"- node: {entry.get('node')}",
+        f"  iteration: {entry.get('iteration')}",
+        f"  timestamp: {entry.get('timestamp')}",
+        f"  payload_keys: {', '.join(sorted(payload.keys())) if payload else '(none)'}",
+    ]
+    if verbose:
+        lines.append("  payload:")
+        for line in _json_dumps(payload).splitlines():
+            lines.append(f"    {line}")
+    else:
+        highlight = {
+            key: payload.get(key)
+            for key in (
+                "fault_type",
+                "selected_services",
+                "root_cause",
+                "decision",
+                "confidence",
+                "report_path",
+            )
+            if key in payload
+        }
+        if highlight:
+            lines.append(f"  highlights: {_json_dumps(highlight)}")
+    return "\n".join(lines)
+
+
+def _dedupe_node_history(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    seen: set[str] = set()
+    deduped: list[dict[str, Any]] = []
+    for entry in entries:
+        signature = _json_dumps(entry)
+        if signature in seen:
+            continue
+        seen.add(signature)
+        deduped.append(entry)
+    return deduped
+
+
+def _print_text_demo(
+    summary: dict[str, Any],
+    report_preview_chars: int,
+    verbose: bool,
+) -> None:
+    investigation_input = summary.get("investigation_input", {})
+    decision_summary = summary.get("decision_summary", {})
+    evidence_summary = summary.get("evidence_summary", {})
+    artifacts = summary.get("artifacts", {})
+    report_header = summary.get("report_header", {})
+    node_history = _dedupe_node_history(summary.get("node_history", []))
+
+    print("=== AIOps RCA Defense Demo ===")
+    print()
+    print("[1] 场景信息")
+    print(f"- csv_path: {investigation_input.get('csv_path')}")
+    print(f"- user_input: {investigation_input.get('user_input')}")
+    print(f"- start: {investigation_input.get('start')}")
+    print(f"- end: {investigation_input.get('end')}")
+    print(f"- iteration: {investigation_input.get('iteration')} / {investigation_input.get('max_iter')}")
+    print()
+
+    print("[2] 节点执行摘要")
+    if not node_history:
+        print("- no node history recorded")
+    else:
+        for entry in node_history:
+            print(_format_node_summary(entry, verbose=verbose))
+    print()
+
+    print("[3] 最终结论")
+    print(f"- root_cause: {decision_summary.get('root_cause')}")
+    print(f"- secondary_causes: {decision_summary.get('secondary_causes')}")
+    print(f"- decision: {decision_summary.get('decision')}")
+    print(f"- confidence: {decision_summary.get('confidence')}")
+    print(f"- affected_services: {report_header.get('affected_services')}")
+    print(f"- fault_type: {report_header.get('fault_type')}")
+    print(f"- analysis_mode: {decision_summary.get('analysis_mode')}")
+    print()
+
+    print("[4] 证据摘要")
+    print(f"- metric_count: {evidence_summary.get('metric_count')}")
+    print(f"- log_count: {evidence_summary.get('log_count')}")
+    print(f"- trace_count: {evidence_summary.get('trace_count')}")
+    print(f"- knowledge_hit_count: {evidence_summary.get('knowledge_hit_count')}")
+    print(f"- services: {evidence_summary.get('services')}")
+    print()
+
+    print("[5] 产物路径")
+    print(f"- report_path: {artifacts.get('report_path')}")
+    print(f"- think_log_path: {artifacts.get('think_log_path')}")
+    print()
+
+    report_path = artifacts.get("report_path")
+    if report_path:
+        try:
+            report_content = Path(report_path).read_text(encoding="utf-8")
+        except OSError as exc:
+            print("[6] 报告预览")
+            print(f"- failed_to_read_report: {exc}")
+        else:
+            print("[6] 报告预览")
+            print(_truncate(report_content, report_preview_chars))
+
+
+def main() -> None:
+    parser = build_parser()
+    args = parser.parse_args()
+
+    orchestrator = RCAOrchestrator(csv_path=args.csv)
+    state = orchestrator.run_investigation(
+        user_input=args.input,
+        start=args.start,
+        end=args.end,
+    )
+    summary = build_investigation_summary(state)
+
+    if args.json:
+        print(_json_dumps(summary))
+        return
+
+    _print_text_demo(
+        summary=summary,
+        report_preview_chars=max(200, args.report_preview_chars),
+        verbose=args.verbose,
+    )
 
 
 if __name__ == "__main__":
-    defense_demo()
+    main()

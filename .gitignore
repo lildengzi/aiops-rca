@@ -6,7 +6,7 @@ __pycache__/
 .Python
 venv/
 .venv/
-env/
+.env/
 *.egg-info/
 dist/
 build/
@@ -31,7 +31,11 @@ data/real_data/
 feedback/
 think_log/
 tests/
-
+data/
+logs/
+benchmark/
+!benchmark/data_with_error.csv
+!benchmark/real_data.csv
 # OS
 .DS_Store
 Thumbs.db
