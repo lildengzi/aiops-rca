@@ -12,9 +12,10 @@ from workflow.summary import DEFAULT_ANALYSIS_QUESTION, build_investigation_summ
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Offline AIOps RCA MVP")
     parser.add_argument(
-        "--csv",
+        "--data-path",
+        dest="data_path",
         default=str(BENCHMARK_DIR / "real_data.csv"),
-        help="Path to the telemetry CSV file",
+        help="Path to a telemetry file or RCAEval case directory",
     )
     parser.add_argument(
         "--input",
@@ -30,7 +31,7 @@ def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
 
-    orchestrator = RCAOrchestrator(csv_path=args.csv)
+    orchestrator = RCAOrchestrator(csv_path=args.data_path)
     state = orchestrator.run_investigation(
         user_input=args.input,
         start=args.start,

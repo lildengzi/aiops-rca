@@ -38,6 +38,7 @@ def retrieve_knowledge_graph_node(graph_state: GraphState, runtime: "WorkflowRun
             "service_queries": query_payload.get("service_queries", []),
             "candidate_services": query_payload.get("candidate_services", []),
             "candidate_metrics": query_payload.get("candidate_metrics", []),
+            "fault_types": query_payload.get("fault_types", []),
             "hit_count": len(knowledge_hits),
             "service_distribution": service_distribution,
             "top_hits": [

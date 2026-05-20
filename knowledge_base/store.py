@@ -149,8 +149,18 @@ class KnowledgeBaseStore:
                 document.root_cause or "",
                 document.solution or "",
                 " ".join(document.tags),
+                self._metadata_text(document.metadata),
             ]
         ).strip()
+
+    def _metadata_text(self, value: Any) -> str:
+        if isinstance(value, dict):
+            return " ".join(self._metadata_text(item) for item in value.values())
+        if isinstance(value, list):
+            return " ".join(self._metadata_text(item) for item in value)
+        if value is None:
+            return ""
+        return str(value)
 
     def _build_vocabulary(self, texts: list[str]) -> list[str]:
         token_set: set[str] = set()

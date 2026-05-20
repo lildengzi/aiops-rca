@@ -5,9 +5,10 @@ from typing import Any
 
 from utils.data_loader import CSVDataLoader
 
+
 SERVICE_TOPOLOGY = {
     "frontend": {
-        "description": "前端Web服务，接收所有用户请求",
+        "description": "Hipster Shop entry web service",
         "dependencies": [
             "adservice",
             "cartservice",
@@ -19,13 +20,9 @@ SERVICE_TOPOLOGY = {
         ],
         "type": "web",
     },
-    "cartservice": {
-        "description": "购物车服务，管理用户购物车",
-        "dependencies": ["redis"],
-        "type": "application",
-    },
+    "cartservice": {"description": "Cart application service", "dependencies": ["redis"], "type": "application"},
     "checkoutservice": {
-        "description": "结算服务，处理订单结算流程",
+        "description": "Checkout orchestration service",
         "dependencies": [
             "cartservice",
             "currencyservice",
@@ -37,50 +34,49 @@ SERVICE_TOPOLOGY = {
         "type": "application",
     },
     "recommendationservice": {
-        "description": "推荐服务，为用户提供商品推荐",
+        "description": "Recommendation application service",
         "dependencies": ["productcatalogservice"],
         "type": "application",
     },
-    "productcatalogservice": {
-        "description": "商品目录服务，管理商品信息",
-        "dependencies": [],
+    "productcatalogservice": {"description": "Product catalogue service", "dependencies": [], "type": "application"},
+    "currencyservice": {"description": "Currency conversion service", "dependencies": [], "type": "application"},
+    "paymentservice": {"description": "Payment service", "dependencies": [], "type": "application"},
+    "shippingservice": {"description": "Shipping service", "dependencies": [], "type": "application"},
+    "emailservice": {"description": "Email service", "dependencies": [], "type": "application"},
+    "adservice": {"description": "Advertisement service", "dependencies": [], "type": "application"},
+    "redis": {"description": "Redis cache", "dependencies": [], "type": "middleware"},
+    "main": {"description": "Infrastructure node", "dependencies": [], "type": "infrastructure"},
+    "front-end": {
+        "description": "Sock Shop entry web service",
+        "dependencies": ["carts", "catalogue", "orders", "payment", "shipping", "user"],
+        "type": "web",
+    },
+    "carts": {"description": "Shopping cart application service", "dependencies": ["carts-db"], "type": "application"},
+    "orders": {
+        "description": "Order management application service",
+        "dependencies": ["orders-db", "payment", "shipping", "user"],
         "type": "application",
     },
-    "currencyservice": {
-        "description": "货币转换服务",
-        "dependencies": [],
+    "catalogue": {
+        "description": "Product catalogue application service",
+        "dependencies": ["catalogue-db"],
         "type": "application",
     },
-    "paymentservice": {
-        "description": "支付服务，处理支付请求",
-        "dependencies": [],
-        "type": "application",
-    },
-    "shippingservice": {
-        "description": "物流服务，计算运费和物流信息",
-        "dependencies": [],
-        "type": "application",
-    },
-    "emailservice": {
-        "description": "邮件服务，发送订单确认邮件",
-        "dependencies": [],
-        "type": "application",
-    },
-    "adservice": {
-        "description": "广告服务，提供广告内容",
-        "dependencies": [],
-        "type": "application",
-    },
-    "redis": {
-        "description": "Redis缓存，为购物车服务提供数据存储",
-        "dependencies": [],
-        "type": "middleware",
-    },
-    "main": {
-        "description": "主节点/基础设施节点",
-        "dependencies": [],
+    "user": {"description": "User account application service", "dependencies": ["user-db"], "type": "application"},
+    "payment": {"description": "Payment application service", "dependencies": [], "type": "application"},
+    "shipping": {"description": "Shipping application service", "dependencies": [], "type": "application"},
+    "queue-master": {"description": "Queue coordination service", "dependencies": ["rabbitmq"], "type": "middleware"},
+    "rabbitmq": {"description": "Message broker", "dependencies": [], "type": "middleware"},
+    "rabbitmq-exporter": {
+        "description": "RabbitMQ metrics exporter",
+        "dependencies": ["rabbitmq"],
         "type": "infrastructure",
     },
+    "carts-db": {"description": "Cart database", "dependencies": [], "type": "database"},
+    "orders-db": {"description": "Order database", "dependencies": [], "type": "database"},
+    "catalogue-db": {"description": "Catalogue database", "dependencies": [], "type": "database"},
+    "user-db": {"description": "User database", "dependencies": [], "type": "database"},
+    "session-db": {"description": "Session database", "dependencies": [], "type": "database"},
 }
 
 
@@ -103,11 +99,20 @@ class TopologyToolbox:
             topology.setdefault(
                 service,
                 {
-                    "description": f"Discovered from CSV telemetry: {service}",
+                    "description": f"Discovered from telemetry: {service}",
                     "dependencies": [],
                     "type": "application",
                 },
             )
+
+        reversed_graph: dict[str, list[str]] = defaultdict(list)
+        for source, details in topology.items():
+            for target in details.get("dependencies", []):
+                reversed_graph[target].append(source)
+
+        for service, details in topology.items():
+            details["upstreams"] = sorted(reversed_graph.get(service, []))
+            details["downstreams"] = sorted(details.get("dependencies", []))
         return topology
 
     def get_full_topology(self) -> dict[str, list[str]]:

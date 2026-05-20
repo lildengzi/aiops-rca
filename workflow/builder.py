@@ -19,10 +19,10 @@ from tools.metric_tools import MetricToolbox
 from tools.trace_tools import TraceToolbox
 from utils.csv_processor import build_dataset_summary
 from utils.data_loader import CSVDataLoader
+from workflow.fault_detection import build_detected_fault
 from workflow.graph_state import GraphState
 from workflow.nodes.aggregate_node import aggregate_graph_node
 from workflow.nodes.analyst_node import analyst_graph_node
-from workflow.nodes.detect_fault_node import detect_fault_graph_node
 from workflow.nodes.log_node import log_graph_node
 from workflow.nodes.master_node import master_graph_node
 from workflow.nodes.metric_node import metric_graph_node
@@ -70,6 +70,7 @@ class WorkflowBuilder:
         )
         dataset_summary = build_dataset_summary(self.runtime.loader, start=start, end=end)
         state.dataset_summary = dataset_summary
+        state.detected_fault = build_detected_fault(user_input, dataset_summary.get("case_context"))
         record_node_event(state, "dataset_summary", dataset_summary)
         return state
 
@@ -79,7 +80,6 @@ class WorkflowBuilder:
 
     def _build_graph(self):
         graph = StateGraph(GraphState)
-        graph.add_node("detect_fault", detect_fault_graph_node)
         graph.add_node("retrieve_knowledge", lambda graph_state: retrieve_knowledge_graph_node(graph_state, self.runtime))
         graph.add_node("master", lambda graph_state: master_graph_node(graph_state, self.runtime.master_agent))
         graph.add_node("metric", lambda graph_state: metric_graph_node(graph_state, self.runtime.metric_agent))
@@ -89,8 +89,7 @@ class WorkflowBuilder:
         graph.add_node("analyst", lambda graph_state: analyst_graph_node(graph_state, self.runtime.analyst_agent))
         graph.add_node("reporter", lambda graph_state: reporter_graph_node(graph_state, self.runtime.reporter_agent))
 
-        graph.add_edge(START, "detect_fault")
-        graph.add_edge("detect_fault", "retrieve_knowledge")
+        graph.add_edge(START, "retrieve_knowledge")
         graph.add_edge("retrieve_knowledge", "master")
         graph.add_edge("master", "metric")
         graph.add_edge("master", "log")

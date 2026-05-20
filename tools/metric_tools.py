@@ -43,6 +43,10 @@ class MetricToolbox:
         except KeyError:
             return {
                 "service": service,
+                "pillar": "metric",
+                "source_type": "missing",
+                "time_aligned": "unknown",
+                "strength": "weak",
                 "metric": metric,
                 "stats": {},
                 "is_anomalous": False,
@@ -57,6 +61,10 @@ class MetricToolbox:
         stats = summarize_series(series)
         return {
             "service": service,
+            "pillar": "metric",
+            "source_type": "real",
+            "time_aligned": bool(timestamps),
+            "strength": "medium" if anomaly_indices else "weak",
             "metric": metric,
             "stats": stats,
             "is_anomalous": bool(anomaly_indices),

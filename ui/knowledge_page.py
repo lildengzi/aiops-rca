@@ -26,7 +26,7 @@ def render_knowledge_page() -> None:
     with col1:
         st.subheader("知识条目")
     with col2:
-        if st.button("重建索引", use_container_width=True):
+        if st.button("重建索引", width="stretch"):
             result = store.rebuild_index()
             _list_documents.clear()
             st.success(f"索引已重建：{json.dumps(result, ensure_ascii=False)}")
@@ -48,7 +48,7 @@ def render_knowledge_page() -> None:
     _render_create_form(store)
 
     with st.expander("当前知识文档预览", expanded=False):
-        st.dataframe([document.to_dict() for document in documents], use_container_width=True)
+        st.dataframe([document.to_dict() for document in documents], width="stretch")
 
 
 

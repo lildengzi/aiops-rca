@@ -15,6 +15,7 @@ BASE_DIR = Path(__file__).resolve().parent
 BENCHMARK_DIR = BASE_DIR / "benchmark"
 REPORTS_DIR = BASE_DIR / os.getenv("REPORTS_DIR", "reports")
 THINK_LOG_DIR = BASE_DIR / os.getenv("THINK_LOG_DIR", "think_log")
+TEST_OUTPUTS_DIR = BASE_DIR / os.getenv("TEST_OUTPUTS_DIR", "test_outputs")
 DOCS_DIR = BASE_DIR / "docs"
 KNOWLEDGE_BASE_DIR = BASE_DIR / os.getenv("KNOWLEDGE_BASE_DIR", "knowledge_base")
 KNOWLEDGE_DOCS_PATH = KNOWLEDGE_BASE_DIR / os.getenv("KNOWLEDGE_DOCS_FILE", "documents.json")
@@ -40,5 +41,6 @@ EMBEDDING_BASE_URL = os.getenv("EMBEDDING_BASE_URL", OPENAI_BASE_URL)
 
 REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 THINK_LOG_DIR.mkdir(parents=True, exist_ok=True)
+TEST_OUTPUTS_DIR.mkdir(parents=True, exist_ok=True)
 DOCS_DIR.mkdir(parents=True, exist_ok=True)
 KNOWLEDGE_BASE_DIR.mkdir(parents=True, exist_ok=True)

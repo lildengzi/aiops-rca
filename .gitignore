@@ -5,6 +5,19 @@ feedback
 reports
 think_log
 .env
-*.json
 high_quality.md
+.vscode/
+.obsidian/
+test_outputs/
+benchmark/_downloads/
+*.py[cod]
+**/__pycache__/
+*.log
+*.tmp
+*.bak
+experiment_rcaeval.py
+setup_rcaeval.py
+agents/single_llm_agent.py
+knowledge_base/documents.json
+knowledge_base/faiss_index/
 

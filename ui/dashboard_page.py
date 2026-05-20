@@ -86,7 +86,7 @@ def render_dashboard_page() -> None:
         cols[index].metric(label, value)
 
     st.subheader("历史报告总览")
-    st.dataframe(dataframe[display_columns], use_container_width=True)
+    st.dataframe(dataframe[display_columns], width="stretch")
 
     root_cause_counts = dataframe["root_cause"].fillna("unknown").value_counts()
     decision_counts = dataframe["decision"].fillna("unknown").value_counts()

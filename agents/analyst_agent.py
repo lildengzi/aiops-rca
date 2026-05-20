@@ -17,6 +17,8 @@ Required fields: decision, confidence, root_cause, secondary_causes, ranked_serv
 Use confidence between 0 and 1.
 Only conclude from the provided evidence. Do not invent metric values, log messages, trace paths, propagation chains, or timestamps.
 Historical knowledge is supportive context only and cannot override current tool evidence.
+The root_cause must be a service or service-chain position, never a standalone metric name.
+Metrics, logs, and traces are peer observability pillars. Explain whether they agree, conflict, or are missing.
 If evidence is insufficient or conflicting, explicitly state the gap and keep confidence conservative.
 If only one evidence dimension supports a service, confidence must remain below 0.8.
 Distinguish between symptom services, propagated impact, and likely origin services.
@@ -62,10 +64,36 @@ class AnalystAgent:
             return []
         return [str(value)]
 
+    def _empty_score_breakdown(self) -> dict[str, float]:
+        return {
+            "metric_score": 0.0,
+            "log_score": 0.0,
+            "trace_score": 0.0,
+            "topology_score": 0.0,
+            "knowledge_score": 0.0,
+            "penalty": 0.0,
+        }
+
+    def _normalize_score_breakdown(self, value: Any) -> dict[str, float]:
+        base = self._empty_score_breakdown()
+        if not isinstance(value, dict):
+            return base
+        for key in base:
+            try:
+                base[key] = round(float(value.get(key, base[key]) or 0.0), 4)
+            except (TypeError, ValueError):
+                base[key] = 0.0
+        return base
+
     def _normalize_ranked_services(self, value: Any, fallback: list[dict[str, Any]]) -> list[dict[str, Any]]:
         if not isinstance(value, list):
             return fallback
 
+        fallback_by_service = {
+            str(item.get("service")): item
+            for item in fallback
+            if isinstance(item, dict) and item.get("service")
+        }
         normalized: list[dict[str, Any]] = []
         for item in value:
             if not isinstance(item, dict):
@@ -77,12 +105,20 @@ class AnalystAgent:
                 score = round(float(item.get("score", 0.0)), 2)
             except (TypeError, ValueError):
                 score = 0.0
+            fallback_item = fallback_by_service.get(service, {})
+            evidence_pillars = item.get("evidence_pillars", fallback_item.get("evidence_pillars", []))
+            if not isinstance(evidence_pillars, list):
+                evidence_pillars = []
             normalized.append(
                 {
                     "service": service,
                     "score": score,
-                    "role": str(item.get("role", "candidate")),
-                    "evidence_count": int(item.get("evidence_count", 0) or 0),
+                    "role": str(item.get("role", fallback_item.get("role", "candidate"))),
+                    "evidence_count": int(item.get("evidence_count", fallback_item.get("evidence_count", 0)) or 0),
+                    "evidence_pillars": sorted({str(pillar) for pillar in evidence_pillars if str(pillar).strip()}),
+                    "score_breakdown": self._normalize_score_breakdown(
+                        item.get("score_breakdown", fallback_item.get("score_breakdown"))
+                    ),
                 }
             )
         return normalized or fallback
@@ -277,6 +313,7 @@ class AnalystAgent:
         knowledge_map = self._knowledge_map(knowledge_hits)
 
         service_scores: dict[str, float] = {}
+        score_breakdowns: dict[str, dict[str, float]] = {}
         service_reasons: dict[str, list[str]] = {}
         evidence_counts: dict[str, int] = {}
         dimension_support: dict[str, set[str]] = {}
@@ -291,6 +328,10 @@ class AnalystAgent:
         service_recommended_actions: dict[str, list[str]] = {}
         service_metric_names: dict[str, set[str]] = {}
 
+        def add_score(service: str, key: str, delta: float) -> None:
+            service_scores[service] = service_scores.get(service, 0.0) + delta
+            score_breakdowns.setdefault(service, self._empty_score_breakdown())[key] += delta
+
         for item in metric_results:
             service = str(item.get("service", "")).strip()
             metric_name = str(item.get("metric", "")).strip()
@@ -302,7 +343,7 @@ class AnalystAgent:
                     score += 0.08
                 if topology_details.get(service, {}).get("upstreams"):
                     score += 0.03
-                service_scores[service] = service_scores.get(service, 0.0) + score
+                add_score(service, "metric_score", score)
                 evidence_counts[service] = evidence_counts.get(service, 0) + 1
                 dimension_support.setdefault(service, set()).add("metric")
                 if metric_name:
@@ -327,7 +368,7 @@ class AnalystAgent:
             log_count = int(item.get("log_count", 0) or 0)
             top_patterns = item.get("top_patterns", [])
             if log_count > 0:
-                service_scores[service] = service_scores.get(service, 0.0) + min(0.28, log_count / 25)
+                add_score(service, "log_score", min(0.28, log_count / 25))
                 evidence_counts[service] = evidence_counts.get(service, 0) + 1
                 dimension_support.setdefault(service, set()).add("log")
                 top_pattern = top_patterns[0].get("pattern") if top_patterns else "日志模式待人工展开"
@@ -346,16 +387,34 @@ class AnalystAgent:
             if not service:
                 continue
             trace_count = int(item.get("trace_count", 0) or 0)
+            topology_count = int(item.get("topology_count", 0) or 0)
+            source_type = str(item.get("source_type") or "").strip()
+            pillar = str(item.get("pillar") or "").strip()
             propagation_paths = item.get("propagation_paths", [])
-            if trace_count > 0:
-                service_scores[service] = service_scores.get(service, 0.0) + 0.18
+            if trace_count > 0 and source_type == "real":
+                if trace_count >= 1000:
+                    trace_score = 0.42
+                elif trace_count >= 100:
+                    trace_score = 0.34
+                elif trace_count >= 20:
+                    trace_score = 0.28
+                else:
+                    trace_score = 0.16
+                add_score(service, "trace_score", trace_score)
                 evidence_counts[service] = evidence_counts.get(service, 0) + 1
                 dimension_support.setdefault(service, set()).add("trace")
                 service_reasons.setdefault(service, []).append(
                     f"{service} 在调用链证据中出现 {trace_count} 次，相关传播路径 {len(propagation_paths)} 条"
                 )
                 if service_roles.get(service) in {None, "candidate"}:
-                    service_roles[service] = "propagated"
+                    service_roles[service] = "origin" if trace_count >= 100 else "propagated"
+            elif topology_count > 0 or source_type == "inferred" or pillar == "topology":
+                add_score(service, "topology_score", min(0.08, 0.03 + 0.01 * topology_count))
+                evidence_counts[service] = evidence_counts.get(service, 0) + 1
+                dimension_support.setdefault(service, set()).add("topology")
+                service_reasons.setdefault(service, []).append(
+                    f"{service} has topology-inferred propagation context only; it is weak support and not real trace evidence."
+                )
 
             for path in propagation_paths:
                 nodes = [part.strip() for part in str(path).split("->") if part.strip()]
@@ -383,30 +442,39 @@ class AnalystAgent:
             source_hits = trace_sources.get(service, 0)
             target_hits = trace_targets.get(service, 0)
             if len(supported_dimensions) == 1:
-                service_scores[service] *= 0.72
+                add_score(service, "penalty", -service_scores[service] * 0.28)
                 service_reasons.setdefault(service, []).append(
                     f"{service} 当前仅有单一证据维度支撑，需要补充更多交叉验证"
                 )
             if target_hits > source_hits and target_hits > 0:
-                service_scores[service] *= 0.88
+                add_score(service, "penalty", -service_scores[service] * 0.12)
                 service_roles[service] = "symptom"
                 service_reasons.setdefault(service, []).append(
                     f"{service} 在调用链中更常作为下游终点出现，更像传播结果而非首发节点"
                 )
             elif source_hits > target_hits and source_hits > 0 and len(supported_dimensions) >= 2:
-                service_scores[service] += 0.08
+                if "trace" in supported_dimensions:
+                    add_score(service, "trace_score", 0.08)
+                elif "topology" in supported_dimensions:
+                    add_score(service, "topology_score", 0.03)
                 service_roles[service] = "origin"
                 service_reasons.setdefault(service, []).append(
                     f"{service} 在调用链中更常作为上游起点出现，较符合首发异常特征"
                 )
             if service in downstream_targets and "trace" in supported_dimensions and len(supported_dimensions) <= 2:
-                service_scores[service] *= 0.9
+                add_score(service, "penalty", -service_scores[service] * 0.1)
                 service_roles[service] = "symptom"
                 service_reasons.setdefault(service, []).append(
                     f"{service} 更像传播链上的受影响节点，而不是唯一首发点"
                 )
+            elif service in downstream_targets and "topology" in supported_dimensions and "trace" not in supported_dimensions:
+                add_score(service, "penalty", -service_scores[service] * 0.08)
+                service_roles[service] = "symptom"
+                service_reasons.setdefault(service, []).append(
+                    f"{service} is downstream in inferred topology only, so it is treated as a symptom candidate."
+                )
             elif {"metric", "log", "trace"}.issubset(supported_dimensions):
-                service_scores[service] += 0.12
+                add_score(service, "trace_score", 0.12)
                 service_roles[service] = "origin"
                 service_reasons.setdefault(service, []).append(
                     f"{service} 同时获得指标、日志、调用链三维支撑，首因可信度更高"
@@ -423,7 +491,7 @@ class AnalystAgent:
                 service_metric_names.get(service, set()),
                 service_roles.get(service, "candidate"),
             )
-            service_scores[service] = service_scores.get(service, 0.0) + score_delta
+            add_score(service, "knowledge_score", score_delta)
             service_reasons.setdefault(service, []).extend(reasoning)
             service_gaps.setdefault(service, []).extend(gaps)
             service_recommended_actions.setdefault(service, []).extend(recommended_actions)
@@ -448,6 +516,8 @@ class AnalystAgent:
                 confidence = min(confidence, 0.79)
             elif len(root_dimensions) == 2:
                 confidence = min(confidence, 0.84)
+            if "topology" in root_dimensions and "trace" not in root_dimensions:
+                confidence = min(confidence, 0.78)
             if root_cause in knowledge_conflicts:
                 confidence = min(confidence, 0.76)
         confidence = round(confidence, 2)
@@ -467,9 +537,11 @@ class AnalystAgent:
         ranked_services = [
             {
                 "service": service,
-                "score": round(score, 2),
+                "score": round(max(0.0, score), 2),
                 "role": service_roles.get(service, "candidate"),
                 "evidence_count": evidence_counts.get(service, 0),
+                "evidence_pillars": sorted(dimension_support.get(service, set())),
+                "score_breakdown": self._normalize_score_breakdown(score_breakdowns.get(service)),
             }
             for service, score in ranked
         ]
@@ -478,10 +550,11 @@ class AnalystAgent:
             {
                 "service": item["service"],
                 "role": item.get("role", "candidate"),
-                "metric": "metric" in dimension_support.get(item["service"], set()),
-                "log": "log" in dimension_support.get(item["service"], set()),
-                "trace": "trace" in dimension_support.get(item["service"], set()),
-                "knowledge": item["service"] in knowledge_map,
+                "metric": "real" if "metric" in dimension_support.get(item["service"], set()) else "none",
+                "log": "real" if "log" in dimension_support.get(item["service"], set()) else "none",
+                "trace": "real" if "trace" in dimension_support.get(item["service"], set()) else "none",
+                "topology": "inferred" if "topology" in dimension_support.get(item["service"], set()) else "none",
+                "knowledge": "support" if item["service"] in knowledge_map and item["service"] not in knowledge_conflicts else "conflict" if item["service"] in knowledge_conflicts else "none",
                 "notes": self._deduplicate_strings(service_reasons.get(item["service"], [])[:3]),
             }
             for item in ranked_services
@@ -619,6 +692,7 @@ class AnalystAgent:
             "propagation_summary": propagation_summary,
             "excluded_hypotheses": excluded_hypotheses,
             "evidence_matrix": evidence_matrix,
+            "three_pillar_matrix": evidence_matrix,
             "recommendation_tiers": recommendation_tiers,
             "analysis_mode": "rule",
         }
@@ -728,6 +802,7 @@ class AnalystAgent:
                 "propagation_summary": propagation_summary,
                 "excluded_hypotheses": excluded_hypotheses,
                 "evidence_matrix": evidence_matrix,
+                "three_pillar_matrix": evidence_matrix,
                 "recommendation_tiers": recommendation_tiers,
                 "analysis_mode": "llm",
                 "llm_raw": response["raw_text"][:4000],

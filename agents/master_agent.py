@@ -14,12 +14,15 @@ from workflow.state import RCAState
 MASTER_SYSTEM_PROMPT = """You are the Master Agent of an AIOps RCA workflow.
 Return valid JSON only.
 Your job is planning, not final root-cause confirmation.
-Use the provided dataset summary, detected fault types, candidate metric evidence, retrieved historical cases, and topology details.
+Use the provided dataset summary, detected fault types, observability pillar status, retrieved historical cases, and topology details.
 Each action must use one of: metric, log, trace.
 Only plan investigations for services grounded in the provided candidates or topology context.
-Do not invent services, metrics, timestamps, or supporting evidence.
+Do not invent services, service links, metrics, timestamps, or supporting evidence.
 Historical knowledge is reference-only and cannot be treated as proof of the current incident.
 Every hypothesis must be tied to a concrete service and every action must explain why that tool is needed.
+The root-cause hypothesis must be a service or a service-chain position, never a standalone metric name.
+Treat metrics, logs, and traces as peer evidence pillars used to verify a service-level hypothesis.
+Prefer plans that collect missing observability pillars for the same candidate service before making a final decision.
 Use historical knowledge to prioritize checks, add differential checks, and surface missing evidence.
 If knowledge hits conflict with current candidate signals, add actions that explicitly resolve the conflict.
 """
@@ -44,16 +47,17 @@ class MasterAgent:
             "fault_types": state.detected_fault.get("fault_types", []),
             "knowledge_hits": state.knowledge_hits,
             "topology_details": state.topology_details,
+            "observability_summary": state.dataset_summary.get("observability_summary", {}),
         }
         return master_prompt(summary, state.user_input)
 
     def _metric_priority(self, metric_name: str) -> float:
         weights = {
-            "error": 0.42,
-            "latency": 0.34,
-            "cpu": 0.28,
-            "mem": 0.24,
-            "load": 0.26,
+            "error": 0.22,
+            "latency": 0.2,
+            "cpu": 0.18,
+            "mem": 0.16,
+            "load": 0.16,
         }
         return weights.get(metric_name, 0.18)
 
@@ -150,6 +154,7 @@ class MasterAgent:
         fault_types = set(state.detected_fault.get("fault_types", []))
         knowledge_map = self._knowledge_map(state.knowledge_hits)
         candidates: list[dict[str, Any]] = []
+        explicit_services = self._explicit_services_from_input(state.user_input, list(service_metrics.keys()))
 
         for service, metrics in service_metrics.items():
             score = 0.0
@@ -174,7 +179,7 @@ class MasterAgent:
                         score += 0.08
                     metric_actions.append({"service": service, "metric": metric})
 
-            if not metric_actions:
+            if not metric_actions and service not in explicit_services:
                 continue
 
             topology = topology_details.get(service, {})
@@ -186,6 +191,8 @@ class MasterAgent:
                 score += 0.05
             if service in knowledge_map:
                 score += 0.07
+            if service in explicit_services:
+                score += 0.35
 
             role = "origin"
             if any(metric in {"latency", "error"} for metric in anomalous_metrics) and not any(
@@ -272,6 +279,52 @@ class MasterAgent:
                     "derived_from_knowledge": False,
                 }
             )
+            if service in explicit_services:
+                available_metrics = state.dataset_summary.get("service_metrics", {}).get(service, [])
+                fallback_metric = next((metric for metric in ["error", "latency", "cpu", "mem", "load"] if metric in available_metrics), None)
+                if fallback_metric:
+                    actions.append(
+                        {
+                            "tool": "metric",
+                            "service": service,
+                            "metric": fallback_metric,
+                            "why": f"{service} is explicitly mentioned in the incident input; collect metric evidence as one observability pillar.",
+                            "expected_signal": "Metric evidence should be checked together with logs and traces before accepting or rejecting this service as root cause.",
+                            "derived_from_knowledge": False,
+                        }
+                    )
+                actions.append(
+                    {
+                        "tool": "log",
+                        "service": service,
+                        "why": f"{service} is explicitly mentioned in the incident input; collect log evidence as one observability pillar.",
+                        "expected_signal": "Logs should show local error/resource patterns near the incident window if this service is the root cause.",
+                        "derived_from_knowledge": False,
+                    }
+                )
+                actions.append(
+                    {
+                        "tool": "trace",
+                        "service": service,
+                        "why": f"{service} is explicitly mentioned in the incident input; collect trace evidence as one observability pillar.",
+                        "expected_signal": "Trace/topology evidence should clarify whether this service is origin, propagated impact, or symptom.",
+                        "derived_from_knowledge": False,
+                    }
+                )
+            if not item["actions"]:
+                for fallback_metric in ["error", "latency", "cpu"]:
+                    if fallback_metric in state.dataset_summary.get("service_metrics", {}).get(service, []):
+                        actions.append(
+                            {
+                                "tool": "metric",
+                                "service": service,
+                                "metric": fallback_metric,
+                                "why": f"Collect metric evidence for {service} as one observability pillar of a service-level RCA hypothesis.",
+                                "expected_signal": "Metric anomalies should align with log or trace evidence before the service is treated as root cause.",
+                                "derived_from_knowledge": False,
+                            }
+                        )
+                        break
             actions.extend(extra_actions)
 
         actions = self._deduplicate_actions(actions)
@@ -353,3 +406,8 @@ class MasterAgent:
             state.llm_reason = str(exc)
             fallback_result["llm_status"] = str(exc)
             return fallback_result
+
+    @staticmethod
+    def _explicit_services_from_input(user_input: str, services: list[str]) -> set[str]:
+        lowered = user_input.lower()
+        return {service for service in services if service.lower() in lowered}

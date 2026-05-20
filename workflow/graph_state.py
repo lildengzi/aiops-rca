@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from operator import add
 from typing import Annotated, Any, TypedDict
 
 
@@ -18,6 +17,27 @@ def keep_existing_or_latest(
     right: str | None,
 ) -> str | None:
     return right or left
+
+
+def merge_node_history(
+    left: list[dict[str, Any]] | None,
+    right: list[dict[str, Any]] | None,
+) -> list[dict[str, Any]]:
+    merged: list[dict[str, Any]] = []
+    seen: set[tuple[str, str, str]] = set()
+    for entry in list(left or []) + list(right or []):
+        if not isinstance(entry, dict):
+            continue
+        key = (
+            str(entry.get("timestamp") or ""),
+            str(entry.get("node") or ""),
+            str(entry.get("iteration") or ""),
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        merged.append(entry)
+    return merged
 
 
 class GraphState(TypedDict, total=False):
@@ -39,5 +59,5 @@ class GraphState(TypedDict, total=False):
     knowledge_hits: list[dict[str, Any]]
     llm_enabled: bool
     llm_reason: str
-    node_history: Annotated[list[dict[str, Any]], add]
+    node_history: Annotated[list[dict[str, Any]], merge_node_history]
     topology_details: dict[str, dict[str, Any]]

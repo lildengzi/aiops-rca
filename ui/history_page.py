@@ -5,7 +5,6 @@ from typing import Any
 
 import streamlit as st
 
-from config import REPORTS_DIR
 from ui.dashboard_page import _extract_header, _extract_services, load_report_rows, read_report_text
 
 
@@ -48,11 +47,10 @@ def render_history_page() -> None:
     think_log_path = _find_matching_think_log(selected_path)
     with st.expander("关联 Think Log", expanded=False):
         if think_log_path is None:
-            st.info("未找到同时间戳的 think log。")
+            st.info("未找到同一时间戳的 Think Log。")
         else:
             st.caption(str(think_log_path))
             st.text_area("Think Log", value=_read_think_log_text(str(think_log_path)), height=360)
-
 
 
 def _render_report_summary(report_path: Path, header: dict[str, Any], services: list[str]) -> None:
@@ -78,14 +76,12 @@ def _render_report_summary(report_path: Path, header: dict[str, Any], services: 
             st.write("**次级根因**：-")
 
 
-
 def _build_report_label(path: Path) -> str:
     content = read_report_text(str(path))
     header = _extract_header(content)
     root_cause = header.get("root_cause") or "unknown"
     generated_at = header.get("generated_at") or _guess_generated_at(path)
     return f"{generated_at} | {root_cause} | {path.name}"
-
 
 
 def _guess_generated_at(report_path: Path) -> str:
@@ -97,13 +93,11 @@ def _guess_generated_at(report_path: Path) -> str:
     return report_path.name
 
 
-
 def _find_matching_think_log(report_path: Path) -> Path | None:
     suffix = report_path.stem.replace("rca_report_", "")
     think_log_dir = report_path.parent.parent / "think_log"
     matches = sorted(think_log_dir.glob(f"*{suffix}.md"))
     return matches[0] if matches else None
-
 
 
 def _safe_text(value: Any) -> str:

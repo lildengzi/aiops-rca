@@ -54,6 +54,6 @@ def render_feedback_page() -> None:
     feedback_items = list(reversed(_read_feedback_items()))
     if feedback_items:
         st.subheader("历史反馈")
-        st.dataframe(feedback_items, use_container_width=True)
+        st.dataframe(feedback_items, width="stretch")
     else:
         st.info("当前还没有反馈记录。")

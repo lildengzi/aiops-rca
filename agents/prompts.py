@@ -69,6 +69,7 @@ def master_prompt(state_summary: dict[str, Any], user_input: str) -> dict[str, A
             "fault_types": state_summary.get("fault_types", []),
             "knowledge_hits": state_summary.get("knowledge_hits", []),
             "topology_details": state_summary.get("topology_details", {}),
+            "observability_summary": state_summary.get("observability_summary", {}),
         },
         output_schema={
             "hypotheses": [
@@ -98,6 +99,8 @@ def master_prompt(state_summary: dict[str, Any], user_input: str) -> dict[str, A
         + [
             "This agent is a planner, not the final decision maker.",
             "Each hypothesis must bind to a concrete service from the candidate list.",
+            "The suspected root cause is a service or service-chain position, not a standalone metric.",
+            "Metrics, logs, and traces are peer evidence pillars. Prefer plans that collect missing pillars for the same service.",
             "Label each hypothesis as likely origin, propagated impact, or symptom candidate.",
             "Each action must explain why the tool is needed and what evidence would confirm or reject the hypothesis.",
             "Prefer a focused plan that verifies the strongest suspects first.",
@@ -188,7 +191,7 @@ def analyst_prompt(
             "confidence": "float",
             "root_cause": "str",
             "secondary_causes": "list[str]",
-            "ranked_services": "list[dict(service, score, role, evidence_count)]",
+            "ranked_services": "list[dict(service, score, role, evidence_count, evidence_pillars, score_breakdown)]",
             "reasoning": "list[str]",
             "evidence_links": "list[dict(source_service, target_service, relation, evidence)]",
             "evidence_gaps": "list[str]",
@@ -200,13 +203,19 @@ def analyst_prompt(
             "impact_summary": "dict(core_services, affected_services, narrative)|optional",
             "propagation_summary": "dict(summary_lines, paths)|optional",
             "excluded_hypotheses": "list[dict(hypothesis, reason)]|optional",
-            "evidence_matrix": "list[dict(service, role, metric, log, trace, knowledge, notes)]|optional",
+            "evidence_matrix": "list[dict(service, role, metric, log, trace, topology, knowledge, notes)]|optional",
+            "three_pillar_matrix": "list[dict(service, role, metric, log, trace, topology, knowledge, notes)]|optional",
             "recommendation_tiers": "dict(immediate, verification, hardening)|optional",
         },
         notes=TOOL_GROUNDED_NOTES
         + [
             "The reported root_cause must be a real service supported by current metrics/logs/traces evidence.",
+            "Do not report a metric name as root_cause. Use metrics only as evidence for a service-level conclusion.",
+            "A strong decision should explain how metric, log, and trace evidence agree or conflict.",
             "If only one evidence dimension supports a service, confidence should stay below 0.8.",
+            "Each evidence item may include service, pillar, source_type, time_aligned, and strength; preserve those semantics.",
+            "Treat source_type=real trace evidence as stronger than topology/source_type=inferred context.",
+            "Never treat topology-inferred context as real trace evidence.",
             "Distinguish between likely origin service, propagated impact service, and symptom service.",
             "Use evidence_links to describe explicit cause, dependency, or propagation relationships between services.",
             "Use evidence_gaps to state what is still missing before a stronger stop decision would be justified.",
