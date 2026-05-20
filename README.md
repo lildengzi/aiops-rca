@@ -1,4 +1,3 @@
-
 # 基于多智能体的微服务系统故障检测系统
 
 > AIOps 根因分析系统 —— 基于 LangChain + LangGraph 实现 ReAct 模式多智能体协作的微服务故障智能诊断
@@ -189,11 +188,11 @@ python main.py --input "检查 10:00 到 10:30 的异常" --start 1714557600 --e
 
 执行 CLI 或 Web 分析后，系统会在需要时自动创建以下目录：
 
-| 路径          | 说明                         |
-| ------------- | ---------------------------- |
-| `reports/`    | 最终根因分析报告（Markdown） |
-| `think_log/`  | 多智能体完整分析过程日志     |
-| `docs/`       | 项目文档目录                 |
+| 路径           | 说明                         |
+| -------------- | ---------------------------- |
+| `reports/`   | 最终根因分析报告（Markdown） |
+| `think_log/` | 多智能体完整分析过程日志     |
+| `docs/`      | 项目文档目录                 |
 
 ### 5.2 辅助脚本
 
@@ -336,3 +335,130 @@ OPENAI_API_KEY=your_api_key
 OPENAI_BASE_URL=https://api.openai.com/v1
 LLM_MODEL=your_model_name
 ```
+
+## 十三、验收方法
+
+本节用于软硬件验收时快速演示，建议按“基线对比 -> 知识库追加 -> CLI 单案例分析”的顺序执行。
+
+### 13.1 30 个案例小量基线测试对比
+
+该对比用于说明系统不是只做页面展示，而是可以在 RCAEval 案例集上批量验证根因召回效果。下面命令会把结果写入 `test_outputs/`，同时生成同名 Markdown 摘要。
+
+1. 简单传统规则基线：
+
+```powershell
+python experiment_traditional_baseline.py --limit 30 --mode simple --top-k 5 --output test_outputs/traditional_simple_30.json
+```
+
+2. 增强传统规则基线：
+
+```powershell
+python experiment_traditional_baseline.py --limit 30 --mode enhanced --top-k 5 --output test_outputs/traditional_enhanced_30.json
+```
+
+3. 多智能体 RCA 系统：
+
+```powershell
+python experiment_rcaeval.py --limit 30 --top-k 5 --output test_outputs/rcaeval_agent_30.json
+```
+
+4. 查看输出文件：
+
+```powershell
+Get-ChildItem test_outputs\*30.md
+```
+
+数据口径解释：
+
+- `traditional_simple_30.md`：只按指标、日志关键词、调用链出现情况排序。
+- `traditional_enhanced_30.md`：在规则基线上增加服务名归一化和基础设施过滤。
+- `rcaeval_agent_30.md`：使用多智能体任务拆解、多源证据融合、RAG 知识库和回退补证流程。
+- 重点看 `Top-1`、`Top-K`、`MRR` 三个指标；Top-K 表示真实根因是否被纳入候选集合，适合说明系统能帮助人工快速缩小排查范围。
+
+如需按数据集小量抽样，可以使用：
+
+```powershell
+python experiment_rcaeval.py --per-dataset 5 --top-k 5 --output test_outputs/rcaeval_agent_per_dataset_20.json
+python experiment_traditional_baseline.py --limit 30 --dataset re3-tt --mode enhanced --top-k 5 --output test_outputs/traditional_enhanced_re3_tt_30.json
+```
+
+### 13.2 知识库内容追加方法
+
+知识库支持两种演示方式：Web 页面手工追加，以及命令行从案例集重建索引。
+
+#### 方式一：Web 页面追加单条知识
+
+1. 启动 Web：
+
+```powershell
+streamlit run app.py
+```
+
+2. 打开左侧菜单 `知识库管理`。
+3. 在 `新增知识条目` 中填写：
+   - 标题：例如 `frontend latency caused by carts cpu`
+   - 内容：描述故障现象、证据和处置经验。
+   - 服务：例如 `carts`
+   - 故障类型：例如 `cpu` 或 `latency`
+   - 根因：例如 `carts`
+   - 解决建议：例如 `检查 carts 服务 CPU 限额、近期发布和热点请求`
+   - 标签：例如 `carts,cpu,latency,manual`
+   - 元数据：保持 `{}` 或填写合法 JSON。
+4. 点击 `新增条目`。
+5. 点击页面右上侧 `重建索引`，让新增内容参与后续 RAG 检索。
+
+验收讲解口径：这一步证明系统可以把人工复盘经验沉淀到知识库，后续遇到相似故障时作为辅助证据。
+
+#### 方式二：从 RCAEval 案例重建知识库
+
+该方式适合批量构建知识库。注意：下面命令会重建 `knowledge_base/documents.json` 和 `knowledge_base/faiss_index/`，不是增量追加。
+
+```powershell
+python build_knowledge_base.py --case-dir benchmark/rcaeval --limit 30
+```
+
+只构建某个数据集：
+
+```powershell
+python build_knowledge_base.py --case-dir benchmark/rcaeval --dataset re3-tt --limit 30
+```
+
+从普通 CSV 构建：
+
+```powershell
+python build_knowledge_base.py --csv benchmark/simple_metrics.csv
+```
+
+### 13.3 CLI 运行方法示例
+
+CLI 适合演示“输入一句告警，输出结构化 RCA 摘要和报告预览”。
+
+1. 使用默认数据运行：
+
+```powershell
+python main.py
+```
+
+2. 指定告警描述：
+
+```powershell
+python main.py --input "frontend 延迟升高，请分析根因"
+```
+
+3. 指定 RCAEval 某个案例目录作为数据源：
+
+```powershell
+python main.py --data-path benchmark/rcaeval/re2-ss/RE2-SS/carts_cpu/1 --input "frontend latency is increasing, please identify the root cause"
+```
+
+4. 指定时间窗口：
+
+```powershell
+python main.py --data-path benchmark/real_data.csv --input "frontend 延迟升高，请分析根因" --start 1714557600 --end 1714559400
+```
+
+运行完成后重点查看：
+
+- 终端 JSON 摘要：包含根因候选、证据统计、置信度和产物路径。
+- `reports/`：自动生成的 Markdown 根因分析报告。
+- `think_log/`：多智能体分析过程日志，便于说明系统判断依据可追溯。

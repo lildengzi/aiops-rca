@@ -1,23 +1,50 @@
-benchmark/
-__pycache__
-docs
-feedback
-reports
-think_log
+# Local environment
 .env
-high_quality.md
+.venv/
+venv/
+env/
+
+# Editor and personal workspace files
 .vscode/
 .obsidian/
-test_outputs/
-benchmark/_downloads/
-*.py[cod]
+
+# Python cache and test artifacts
+__pycache__/
 **/__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Build and packaging outputs
+build/
+dist/
+*.egg-info/
+
+# Runtime logs and temporary files
 *.log
 *.tmp
 *.bak
+
+# Streamlit runtime uploads
+.streamlit_uploads/
+
+# Project-generated data and outputs
+benchmark/
+benchmark/_downloads/
+docs/
+feedback/
+reports/
+test_outputs/
+think_log/
+high_quality.md
+knowledge_base/documents.json
+knowledge_base/faiss_index/
+
+# Local experimental files
 experiment_rcaeval.py
 setup_rcaeval.py
 agents/single_llm_agent.py
-knowledge_base/documents.json
-knowledge_base/faiss_index/
 
