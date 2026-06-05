@@ -59,7 +59,7 @@ def iter_benchmark_cases() -> list[dict[str, Any]]:
                 "has_traces": evidence_availability["traces"],
                 "evidence_availability": evidence_availability,
                 "evidence_source_files": evidence_source_files,
-                "default_user_input": _default_user_input(case_id, root_cause, fault_type),
+                "default_user_input": _default_user_input(case_id, inject_time),
             }
         )
     if not cases:
@@ -223,10 +223,12 @@ def _evidence_source_files(case_dir: Path) -> dict[str, str]:
     return files
 
 
-def _default_user_input(case_id: str, root_cause: str | None, fault_type: str | None) -> str:
-    if root_cause and fault_type:
-        return f"{case_id}: {root_cause} shows {fault_type} anomaly. Please analyze the root cause."
-    return f"{case_id}: please analyze the root cause."
+def _default_user_input(case_id: str, inject_time: int | None = None) -> str:
+    window_text = f" around timestamp {inject_time}" if inject_time is not None else ""
+    return (
+        f"Incident {case_id.split('_')[-1]}: abnormal telemetry was detected{window_text}. "
+        "Please identify the most likely root cause service using metrics, logs, and traces."
+    )
 
 
 def _infer_dataset(case_dir: Path) -> str:

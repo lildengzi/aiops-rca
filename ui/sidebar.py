@@ -90,6 +90,7 @@ def render_sidebar() -> str:
         "场景",
         options=benchmark_scenarios,
         index=benchmark_scenarios.index(current_scenario),
+        format_func=lambda value: f"Scenario {benchmark_scenarios.index(value) + 1:02d}",
     )
     st.session_state.selected_benchmark_scenario = selected_scenario
 
@@ -106,6 +107,7 @@ def render_sidebar() -> str:
         "Case",
         options=case_labels,
         index=case_labels.index(current_case),
+        format_func=lambda value: f"Incident {case_labels.index(value) + 1:03d}",
     )
     st.session_state.selected_benchmark_case = selected_case_label
 
@@ -121,9 +123,8 @@ def render_sidebar() -> str:
     inject_time = selected_case.get("inject_time")
     st.session_state.analysis_start_raw = "" if inject_time is None else str(inject_time)
 
-    st.sidebar.caption(f"case 目录：{selected_case['case_dir']}")
     st.sidebar.caption(f"注入时间：{inject_time if inject_time is not None else '-'}")
-    st.sidebar.caption(f"标注根因：{selected_case.get('root_cause') or '-'}")
+    st.sidebar.caption("标注答案：已隐藏，仅用于评测统计")
     evidence = selected_case_metadata.get("evidence_availability") or {}
     col1, col2, col3 = st.sidebar.columns(3)
     col1.metric("指标", "有" if evidence.get("metrics") else "无")

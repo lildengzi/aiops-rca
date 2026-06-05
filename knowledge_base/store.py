@@ -146,6 +146,8 @@ class KnowledgeBaseStore:
                 document.content,
                 document.service or "",
                 document.fault_type or "",
+                document.root_cause_service or "",
+                document.fault_code or "",
                 document.root_cause or "",
                 document.solution or "",
                 " ".join(document.tags),

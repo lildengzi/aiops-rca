@@ -36,8 +36,4 @@ def detect_fault_types(user_input: str) -> list[str]:
 
 
 def build_detected_fault(user_input: str, case_context: dict | None = None) -> dict[str, list[str]]:
-    detected = detect_fault_types(user_input)
-    context_fault_type = ""
-    if isinstance(case_context, dict):
-        context_fault_type = str(case_context.get("fault_type") or "").strip().lower()
-    return {"fault_types": _merge_fault_types([*detected, context_fault_type])}
+    return {"fault_types": detect_fault_types(user_input)}

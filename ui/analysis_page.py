@@ -58,11 +58,10 @@ def _render_current_dataset_summary() -> None:
         st.info(
             "当前数据："
             f"{case_context.get('dataset') or '-'} / "
-            f"{case_context.get('scenario') or '-'} / "
-            f"{case_context.get('case_id') or Path(csv_path).name or '-'}"
+            "匿名故障样本"
         )
     with col2:
-        st.caption(f"case 目录：{case_context.get('case_dir') or csv_path or '-'}")
+        st.caption("case 标签已隐藏，仅评测脚本使用")
         st.caption(
             "证据源："
             f"指标{'有' if evidence.get('metrics') else '无'} / "
@@ -285,10 +284,10 @@ def _render_decision_summary(
         case_context = result.get("selected_case") or result.get("case_context") or {}
         evidence_availability = case_context.get("evidence_availability") if isinstance(case_context, dict) else {}
         st.write(f"**数据集**：`{case_context.get('dataset') if isinstance(case_context, dict) else '-'}`")
-        st.write(f"**场景 / Case**：`{case_context.get('scenario') if isinstance(case_context, dict) else '-'}` / `{case_context.get('case_id') if isinstance(case_context, dict) else '-'}`")
-        st.write(f"**标注根因**：`{case_context.get('root_cause') if isinstance(case_context, dict) else '-'}`")
+        st.write("**场景 / Case**：`匿名展示`")
+        st.write("**标注根因**：`已隐藏，仅用于评测统计`")
         st.write(f"**证据源**：{_format_case_evidence(evidence_availability if isinstance(evidence_availability, dict) else {})}")
-        st.write(f"**数据路径**：`{result.get('csv_path') or '-'}`")
+        st.write("**数据路径**：`已隐藏，避免暴露目录标签`")
         st.write(f"**时间范围**：{_format_time_range(result.get('start'), result.get('end'))}")
         fault_types = (result.get("detected_fault") or {}).get("fault_types") or []
         st.write(f"**检测到的故障类型**：{', '.join(map(str, fault_types)) if fault_types else '-'}")

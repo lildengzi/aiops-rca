@@ -8,6 +8,7 @@ from knowledge_base.retriever import KnowledgeRetriever
 from llm.model_factory import LLMAdapter
 from llm.structured_output import extract_json_object
 from tools.metric_tools import MetricToolbox
+from utils.service_identity import is_infrastructure_service
 from workflow.state import RCAState
 
 
@@ -58,6 +59,10 @@ class MasterAgent:
             "cpu": 0.18,
             "mem": 0.16,
             "load": 0.16,
+            "disk": 0.14,
+            "socket": 0.14,
+            "drop": 0.13,
+            "throughput": 0.1,
         }
         return weights.get(metric_name, 0.18)
 
@@ -155,14 +160,59 @@ class MasterAgent:
         knowledge_map = self._knowledge_map(state.knowledge_hits)
         candidates: list[dict[str, Any]] = []
         explicit_services = self._explicit_services_from_input(state.user_input, list(service_metrics.keys()))
+        global_anomaly_by_service = {
+            str(item.get("service")): item
+            for item in summary.get("global_metric_anomalies", [])
+            if isinstance(item, dict) and item.get("service")
+        }
+        log_template_by_service = {
+            str(item.get("service")): item
+            for item in summary.get("log_template_anomalies", [])
+            if isinstance(item, dict) and item.get("service")
+        }
+        globally_ranked_services = [
+            str(item.get("service"))
+            for item in summary.get("global_metric_anomalies", [])
+            if isinstance(item, dict) and item.get("service")
+        ]
+        log_ranked_services = [
+            str(item.get("service"))
+            for item in summary.get("log_template_anomalies", [])
+            if isinstance(item, dict) and item.get("service")
+        ]
 
         for service, metrics in service_metrics.items():
+            if is_infrastructure_service(service) and service not in explicit_services:
+                continue
             score = 0.0
             metric_actions: list[dict[str, str]] = []
             metric_evidence: list[dict[str, Any]] = []
             anomalous_metrics: list[str] = []
+            global_signal = global_anomaly_by_service.get(service, {})
+            log_template_signal = log_template_by_service.get(service, {})
+            globally_anomalous_metrics = [
+                str(item.get("metric"))
+                for item in global_signal.get("top_metrics", [])
+                if isinstance(item, dict) and item.get("metric")
+            ]
 
-            for metric in ["cpu", "load", "latency", "error", "mem"]:
+            prioritized_metrics = list(
+                dict.fromkeys(
+                    [
+                        *globally_anomalous_metrics,
+                        "error",
+                        "latency",
+                        "cpu",
+                        "mem",
+                        "load",
+                        "disk",
+                        "socket",
+                        "drop",
+                        "throughput",
+                    ]
+                )
+            )
+            for metric in prioritized_metrics:
                 if metric not in metrics:
                     continue
                 metric_summary = self.metric_toolbox.summarize_metric(
@@ -178,8 +228,17 @@ class MasterAgent:
                     if metric in fault_types:
                         score += 0.08
                     metric_actions.append({"service": service, "metric": metric})
+                elif metric in globally_anomalous_metrics:
+                    anomalous_metrics.append(metric)
+                    score += self._metric_priority(metric) * 0.85
+                    metric_actions.append({"service": service, "metric": metric})
 
-            if not metric_actions and service not in explicit_services:
+            if global_signal:
+                score += min(float(global_signal.get("score", 0.0) or 0.0) / 20.0, 0.65)
+            if log_template_signal:
+                score += min(float(log_template_signal.get("score", 0.0) or 0.0) / 36.0, 0.25)
+
+            if not metric_actions and service not in explicit_services and not global_signal and not log_template_signal:
                 continue
 
             topology = topology_details.get(service, {})
@@ -216,7 +275,37 @@ class MasterAgent:
             )
 
         candidates.sort(key=lambda item: item["score"], reverse=True)
-        selected = candidates[:3]
+        selected = candidates[:5]
+        selected_services = {item["service"] for item in selected}
+        for service in list(dict.fromkeys([*globally_ranked_services, *log_ranked_services])):
+            if len(selected) >= 8:
+                break
+            if service in selected_services or service not in service_metrics or is_infrastructure_service(service):
+                continue
+            signal = global_anomaly_by_service.get(service, {})
+            log_signal = log_template_by_service.get(service, {})
+            top_metrics = [
+                str(item.get("metric"))
+                for item in signal.get("top_metrics", [])
+                if isinstance(item, dict) and item.get("metric")
+            ]
+            selected.append(
+                {
+                    "service": service,
+                    "score": round(
+                        float(signal.get("score", 0.0) or 0.0) / 20.0
+                        + float(log_signal.get("score", 0.0) or 0.0) / 42.0,
+                        4,
+                    ),
+                    "actions": [{"service": service, "metric": metric} for metric in top_metrics[:3]],
+                    "metric_evidence": [],
+                    "anomalous_metrics": top_metrics[:3],
+                    "role": "candidate",
+                    "upstreams": topology_details.get(service, {}).get("upstreams") or [],
+                    "downstreams": topology_details.get(service, {}).get("downstreams") or [],
+                }
+            )
+            selected_services.add(service)
         hypotheses = []
         actions: list[dict[str, Any]] = []
         knowledge_guidance: list[str] = []

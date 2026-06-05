@@ -6,6 +6,7 @@ from typing import Any
 import streamlit as st
 
 from ui.dashboard_page import _extract_header, _extract_services, load_report_rows, read_report_text
+from utils.incident_contract import report_header_contract
 
 
 @st.cache_data(show_spinner=False)
@@ -31,9 +32,10 @@ def render_history_page() -> None:
     selected_path = options[selected_label]
     content = read_report_text(str(selected_path))
     header = _extract_header(content)
-    services = _extract_services(content, header)
+    contract = report_header_contract(header)
+    services = _extract_services(content, header) or contract["affected_services"]
 
-    _render_report_summary(selected_path, header, services)
+    _render_report_summary(selected_path, header, services, contract)
 
     st.caption(f"文件路径：{selected_path}")
     st.download_button(
@@ -53,13 +55,25 @@ def render_history_page() -> None:
             st.text_area("Think Log", value=_read_think_log_text(str(think_log_path)), height=360)
 
 
-def _render_report_summary(report_path: Path, header: dict[str, Any], services: list[str]) -> None:
+def _render_report_summary(
+    report_path: Path,
+    header: dict[str, Any],
+    services: list[str],
+    contract: dict[str, Any],
+) -> None:
     generated_at = header.get("generated_at") or _guess_generated_at(report_path)
+    root_cause_service = contract.get("root_cause_service") or header.get("root_cause")
+    fault_type = contract.get("fault_type") or header.get("fault_type")
+    fault_code = contract.get("fault_code")
+
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("故障类型", _safe_text(header.get("fault_type")))
-    col2.metric("根因候选", _safe_text(header.get("root_cause")))
+    col1.metric("故障模式", _safe_text(fault_type))
+    col2.metric("根因服务", _safe_text(root_cause_service))
     col3.metric("决策", _safe_text(header.get("decision")))
     col4.metric("置信度", _safe_text(header.get("confidence")))
+
+    if fault_code:
+        st.caption(f"代码级故障标签：{fault_code}。该标签用于区分故障模式，不计入服务覆盖统计。")
 
     st.subheader("报告摘要")
     left, right = st.columns([2, 1])
@@ -71,17 +85,19 @@ def _render_report_summary(report_path: Path, header: dict[str, Any], services: 
         st.write(f"**受影响服务**：{', '.join(services) if services else '-'}")
         secondary = header.get("secondary_causes")
         if isinstance(secondary, list) and secondary:
-            st.write(f"**次级根因**：{', '.join(map(str, secondary))}")
+            st.write(f"**次级根因/放大点**：{', '.join(map(str, secondary))}")
         else:
-            st.write("**次级根因**：-")
+            st.write("**次级根因/放大点**：-")
 
 
 def _build_report_label(path: Path) -> str:
     content = read_report_text(str(path))
     header = _extract_header(content)
-    root_cause = header.get("root_cause") or "unknown"
+    contract = report_header_contract(header)
+    root_cause = contract.get("root_cause_service") or header.get("root_cause") or "unknown"
     generated_at = header.get("generated_at") or _guess_generated_at(path)
-    return f"{generated_at} | {root_cause} | {path.name}"
+    fault_type = contract.get("fault_type") or header.get("fault_type") or "unknown"
+    return f"{generated_at} | {root_cause} | {fault_type} | {path.name}"
 
 
 def _guess_generated_at(report_path: Path) -> str:

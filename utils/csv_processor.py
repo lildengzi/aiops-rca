@@ -5,6 +5,8 @@ from typing import Any
 import pandas as pd
 
 from benchmark_case_loader import case_context_for_path
+from utils.global_anomaly import scan_global_metric_anomalies
+from utils.log_template_anomaly import scan_log_template_anomalies
 from utils.data_loader import CSVDataLoader
 
 
@@ -15,6 +17,17 @@ def build_dataset_summary(loader: CSVDataLoader, start: int | None = None, end: 
     window = loader.filter_by_time(start=start, end=end)
     timestamp_column = loader.timestamp_column
     service_graph = _build_service_graph(metadata.get("services", []))
+    global_anomalies = scan_global_metric_anomalies(
+        loader.load_metrics(),
+        start=start,
+        end=end,
+        service_metrics=metadata.get("service_metrics", {}),
+    )
+    log_template_anomalies = scan_log_template_anomalies(
+        loader.load_log_templates(),
+        start=start,
+        end=end,
+    )
     return {
         **metadata,
         "dataset_kind": metadata.get("dataset_kind", "file"),
@@ -31,6 +44,10 @@ def build_dataset_summary(loader: CSVDataLoader, start: int | None = None, end: 
         "has_traces": metadata.get("trace_rows", 0) > 0,
         "inject_time": metadata.get("inject_time"),
         "service_graph": service_graph,
+        "global_metric_anomalies": global_anomalies,
+        "global_anomaly_services": [item["service"] for item in global_anomalies],
+        "log_template_anomalies": log_template_anomalies,
+        "log_template_anomaly_services": [item["service"] for item in log_template_anomalies],
         "entry_services": [
             service
             for service, details in service_graph.items()
@@ -46,6 +63,7 @@ def build_dataset_summary(loader: CSVDataLoader, start: int | None = None, end: 
             "logs": {
                 "available": metadata.get("log_rows", 0) > 0,
                 "rows": metadata.get("log_rows", 0),
+                "template_rows": metadata.get("log_template_rows", 0),
             },
             "traces": {
                 "available": metadata.get("trace_rows", 0) > 0,

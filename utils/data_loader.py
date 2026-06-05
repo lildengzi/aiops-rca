@@ -17,6 +17,7 @@ class RCAEvalDataLoader:
         self.csv_path = self.data_path
         self._metrics_frame: pd.DataFrame | None = None
         self._logs_frame: pd.DataFrame | None = None
+        self._log_templates_frame: pd.DataFrame | None = None
         self._traces_frame: pd.DataFrame | None = None
         self._metadata: dict[str, Any] | None = None
 
@@ -29,6 +30,11 @@ class RCAEvalDataLoader:
         if self._logs_frame is None:
             self._logs_frame = self._read_optional_frame("logs.csv")
         return self._logs_frame.copy()
+
+    def load_log_templates(self) -> pd.DataFrame:
+        if self._log_templates_frame is None:
+            self._log_templates_frame = self._read_optional_frame("logts.csv")
+        return self._log_templates_frame.copy()
 
     def load_traces(self) -> pd.DataFrame:
         if self._traces_frame is None:
@@ -67,8 +73,9 @@ class RCAEvalDataLoader:
 
         metrics_frame = self.load_metrics()
         logs_frame = self.load_logs()
+        log_templates_frame = self.load_log_templates()
         traces_frame = self.load_traces()
-        metadata = self._build_metadata(metrics_frame, logs_frame, traces_frame)
+        metadata = self._build_metadata(metrics_frame, logs_frame, log_templates_frame, traces_frame)
         self._metadata = metadata
         return dict(metadata)
 
@@ -91,7 +98,7 @@ class RCAEvalDataLoader:
             csv_candidates = [
                 path
                 for path in sorted(self.data_path.glob("*.csv"))
-                if path.name.lower() not in {"logs.csv", "traces.csv"}
+                if path.name.lower() not in {"logs.csv", "logts.csv", "traces.csv"}
             ]
             if not csv_candidates:
                 raise FileNotFoundError(f"No metrics file found under: {self.data_path}")
@@ -147,6 +154,7 @@ class RCAEvalDataLoader:
         self,
         metrics_frame: pd.DataFrame,
         logs_frame: pd.DataFrame,
+        log_templates_frame: pd.DataFrame,
         traces_frame: pd.DataFrame,
     ) -> dict[str, Any]:
         service_metrics = self._discover_service_metrics(metrics_frame.columns.tolist())
@@ -167,8 +175,10 @@ class RCAEvalDataLoader:
             "metric_count": sum(len(metrics) for metrics in service_metrics.values()),
             "metric_column_count": len(metrics_frame.columns) - (1 if "time" in metrics_frame.columns else 0),
             "log_rows": int(len(logs_frame)),
+            "log_template_rows": int(len(log_templates_frame)),
             "trace_rows": int(len(traces_frame)),
             "has_effective_logs": not logs_frame.empty,
+            "has_effective_log_templates": not log_templates_frame.empty,
             "has_effective_traces": not traces_frame.empty,
         }
         inject_time = self._read_inject_time()

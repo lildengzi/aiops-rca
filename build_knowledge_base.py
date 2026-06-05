@@ -83,6 +83,8 @@ def build_documents_from_csv(csv_path: str | Path) -> list[KnowledgeDocument]:
                 content=content,
                 service=service,
                 fault_type=fault_type,
+                root_cause_service=service,
+                fault_code=fault_type if re.fullmatch(r"f\d+", fault_type, re.IGNORECASE) else None,
                 root_cause=root_cause,
                 solution=solution,
                 source=str(csv_path),
@@ -99,6 +101,8 @@ def build_documents_from_csv(csv_path: str | Path) -> list[KnowledgeDocument]:
                     upstreams=upstreams,
                     downstreams=downstreams,
                     related_services=related_services,
+                    root_cause_service=service,
+                    fault_code=fault_type if re.fullmatch(r"f\d+", fault_type, re.IGNORECASE) else None,
                     legacy_note="Flat CSV metric anomalies are stored as metric evidence, not as root causes.",
                 ),
             )
@@ -207,6 +211,8 @@ def build_document_from_rcaeval_case(case_dir: Path, *, dataset_override: str = 
         content=content,
         service=service,
         fault_type=fault_type,
+        root_cause_service=service,
+        fault_code=fault_type if re.fullmatch(r"f\d+", fault_type, re.IGNORECASE) else None,
         root_cause=root_cause,
         solution=solution,
         source=str(case_dir),
@@ -223,6 +229,8 @@ def build_document_from_rcaeval_case(case_dir: Path, *, dataset_override: str = 
             upstreams=upstreams,
             downstreams=downstreams,
             related_services=related_services,
+            root_cause_service=service,
+            fault_code=fault_type if re.fullmatch(r"f\d+", fault_type, re.IGNORECASE) else None,
             scenario=scenario,
             case_dir=str(case_dir),
             evidence_availability={
@@ -249,6 +257,12 @@ def service_incident_metadata(**kwargs: Any) -> dict[str, Any]:
     metadata.setdefault("candidate_role", "unknown")
     metadata.setdefault("source_case_id", "unknown")
     metadata.setdefault("source_dataset", "unknown")
+    metadata.setdefault("root_cause_service", metadata.get("service"))
+    if not metadata.get("fault_code"):
+        fault_type = str(metadata.get("fault_type") or "").strip()
+        if re.fullmatch(r"f\d+", fault_type, re.IGNORECASE):
+            metadata["fault_code"] = fault_type.lower()
+    metadata["contract_schema_version"] = "service_fault_v1"
     metadata["evidence_type"] = "service_incident_case"
     return metadata
 

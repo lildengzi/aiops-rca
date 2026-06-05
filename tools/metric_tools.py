@@ -4,6 +4,7 @@ from typing import Any
 
 from utils.anomaly_detection import detect_anomaly_zscore, summarize_series
 from utils.data_loader import CSVDataLoader
+from utils.global_anomaly import _metric_anomaly_score
 from utils.service_parser import find_metric_column
 
 
@@ -18,7 +19,7 @@ class MetricToolbox:
         start: int | None = None,
         end: int | None = None,
     ) -> list[dict[str, Any]]:
-        frame = self.loader.filter_by_time(start=start, end=end)
+        frame = self.loader.load_metrics() if start is not None else self.loader.filter_by_time(start=start, end=end)
         timestamp_column = self.loader.timestamp_column
         try:
             metric_column = find_metric_column(frame.columns.tolist(), service, metric)
@@ -55,9 +56,19 @@ class MetricToolbox:
                 "peak_value": None,
                 "available": False,
             }
-        series = frame[metric_column]
-        anomaly_indices = detect_anomaly_zscore(series, threshold=threshold)
-        timestamps = frame.iloc[anomaly_indices][timestamp_column].tolist() if anomaly_indices else []
+        window = frame
+        if start is not None:
+            window = window[window[timestamp_column] >= start]
+        if end is not None:
+            window = window[window[timestamp_column] <= end]
+        series = window[metric_column] if not window.empty else frame[metric_column]
+        score, score_details = _metric_anomaly_score(frame[[timestamp_column, metric_column]].rename(columns={timestamp_column: "time"}), metric_column, start=start, end=end)
+        if score > 0 and start is not None:
+            timestamps = window[timestamp_column].head(5).tolist()
+            anomaly_indices = list(range(min(5, len(window))))
+        else:
+            anomaly_indices = detect_anomaly_zscore(series, threshold=threshold)
+            timestamps = window.iloc[anomaly_indices][timestamp_column].tolist() if anomaly_indices else []
         stats = summarize_series(series)
         return {
             "service": service,
@@ -67,6 +78,8 @@ class MetricToolbox:
             "strength": "medium" if anomaly_indices else "weak",
             "metric": metric,
             "stats": stats,
+            "anomaly_score": round(float(score), 4),
+            "score_details": score_details,
             "is_anomalous": bool(anomaly_indices),
             "anomaly_indices": anomaly_indices,
             "anomaly_timestamps": [int(value) for value in timestamps],

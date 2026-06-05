@@ -338,7 +338,11 @@ class AnalystAgent:
             if not service:
                 continue
             if item.get("is_anomalous"):
-                score = self._metric_weight(metric_name)
+                try:
+                    anomaly_score = float(item.get("anomaly_score", 0.0) or 0.0)
+                except (TypeError, ValueError):
+                    anomaly_score = 0.0
+                score = self._metric_weight(metric_name) + min(anomaly_score / 28.0, 0.42)
                 if metric_name in state.detected_fault.get("fault_types", []):
                     score += 0.08
                 if topology_details.get(service, {}).get("upstreams"):
@@ -366,12 +370,17 @@ class AnalystAgent:
             if not service:
                 continue
             log_count = int(item.get("log_count", 0) or 0)
+            template_score = float(item.get("template_anomaly_score", 0.0) or 0.0)
+            template_count = int(item.get("anomalous_template_count", 0) or 0)
+            new_template_count = int(item.get("new_template_count", 0) or 0)
             top_patterns = item.get("top_patterns", [])
-            if log_count > 0:
-                add_score(service, "log_score", min(0.28, log_count / 25))
+            if log_count > 0 or template_score > 0:
+                add_score(service, "log_score", min(0.34, log_count / 40 + template_score / 55 + new_template_count * 0.025))
                 evidence_counts[service] = evidence_counts.get(service, 0) + 1
                 dimension_support.setdefault(service, set()).add("log")
                 top_pattern = top_patterns[0].get("pattern") if top_patterns else "日志模式待人工展开"
+                if template_count:
+                    top_pattern = f"{top_pattern}; {template_count} 个服务内日志模板计数异常"
                 service_reasons.setdefault(service, []).append(
                     f"{service} 日志维度出现 {log_count} 条相关事件，代表模式为 {top_pattern}"
                 )
@@ -509,19 +518,37 @@ class AnalystAgent:
         root_dimensions = dimension_support.get(root_cause, set())
 
         confidence = 0.22
+        score_gap = 0.0
         if ranked:
             top_score = ranked[0][1]
+            second_score = ranked[1][1] if len(ranked) > 1 else 0.0
+            score_gap = top_score - second_score
             confidence = min(0.92, 0.28 + top_score / 2.2)
+            if score_gap < 0.18:
+                confidence = min(confidence, 0.74)
+            elif score_gap < 0.35:
+                confidence = min(confidence, 0.8)
             if len(root_dimensions) == 1:
                 confidence = min(confidence, 0.79)
             elif len(root_dimensions) == 2:
                 confidence = min(confidence, 0.84)
+            if root_dimensions == {"metric"} or root_dimensions == {"log"}:
+                confidence = min(confidence, 0.72)
             if "topology" in root_dimensions and "trace" not in root_dimensions:
                 confidence = min(confidence, 0.78)
             if root_cause in knowledge_conflicts:
                 confidence = min(confidence, 0.76)
         confidence = round(confidence, 2)
-        decision = "stop" if (confidence >= 0.8 and len(root_dimensions) >= 2) or state.iteration >= state.max_iter else "continue"
+        has_real_cross_evidence = len(root_dimensions.intersection({"metric", "log", "trace"})) >= 2
+        stop_ready = confidence >= 0.82 and has_real_cross_evidence and score_gap >= 0.18
+        rechecked_stop_ready = (
+            state.iteration >= 2
+            and confidence >= 0.78
+            and has_real_cross_evidence
+            and score_gap >= 0.12
+            and root_cause not in knowledge_conflicts
+        )
+        decision = "stop" if stop_ready or rechecked_stop_ready else "continue"
         if root_cause in knowledge_conflicts and state.iteration < state.max_iter:
             decision = "continue"
 

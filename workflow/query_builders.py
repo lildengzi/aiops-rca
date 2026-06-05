@@ -13,6 +13,13 @@ def _normalize_fault_type(fault_type: str) -> str:
 
 
 def _candidate_services(state: RCAState, limit: int = 5) -> list[str]:
+    global_services = [
+        str(service)
+        for service in state.dataset_summary.get("global_anomaly_services", [])
+        if str(service).strip()
+    ]
+    if global_services:
+        return global_services[:limit]
     service_metrics = state.dataset_summary.get("service_metrics", {})
     fault_types = {
         _normalize_fault_type(str(item)) for item in state.detected_fault.get("fault_types", []) if str(item).strip()

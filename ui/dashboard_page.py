@@ -10,13 +10,16 @@ import pandas as pd
 import streamlit as st
 
 from config import REPORTS_DIR
+from utils.incident_contract import normalize_service_list, report_header_contract
 
 
 HEADER_PREFIXES = {
     "fault_type": "- fault_type:",
+    "fault_code": "- fault_code:",
     "analysis_question": "- analysis_question:",
     "generated_at": "- generated_at:",
     "root_cause": "- root_cause:",
+    "root_cause_service": "- root_cause_service:",
     "decision": "- decision:",
     "confidence": "- confidence:",
     "affected_services": "- affected_services:",
@@ -30,7 +33,8 @@ def load_report_rows() -> list[dict[str, Any]]:
     for path in sorted(REPORTS_DIR.glob("*.md"), key=lambda item: item.stat().st_mtime, reverse=True):
         content = path.read_text(encoding="utf-8")
         header = _extract_header(content)
-        services = _extract_services(content, header)
+        contract = report_header_contract(header)
+        services = _extract_services(content, header) or contract["affected_services"]
         confidence_value = _coerce_float(header.get("confidence"))
         rows.append(
             {
@@ -39,10 +43,12 @@ def load_report_rows() -> list[dict[str, Any]]:
                 "generated_at": _normalize_generated_at(header.get("generated_at"), path),
                 "analysis_question": header.get("analysis_question") or "-",
                 "root_cause": header.get("root_cause") or "unknown",
+                "root_cause_service": contract["root_cause_service"] or "unknown",
                 "decision": header.get("decision") or "unknown",
                 "confidence": header.get("confidence") or "-",
                 "confidence_value": confidence_value,
-                "fault_type": header.get("fault_type") or "unknown",
+                "fault_type": contract["fault_type"],
+                "fault_code": contract["fault_code"] or "-",
                 "services": services,
                 "service_count": len(services),
                 "report_version": header.get("report_version") or "-",
@@ -68,7 +74,8 @@ def render_dashboard_page() -> None:
         "generated_at",
         "report_name",
         "fault_type",
-        "root_cause",
+        "fault_code",
+        "root_cause_service",
         "decision",
         "confidence",
         "service_count",
@@ -77,7 +84,7 @@ def render_dashboard_page() -> None:
 
     overview = {
         "报告总数": len(dataframe),
-        "唯一根因候选数": int(dataframe["root_cause"].fillna("unknown").nunique()),
+        "唯一根因服务数": int(dataframe["root_cause_service"].fillna("unknown").nunique()),
         "覆盖服务数": int(len({service for services in dataframe["services"] for service in services})),
         "平均置信度": _format_confidence(dataframe["confidence_value"].dropna().mean()),
     }
@@ -88,13 +95,13 @@ def render_dashboard_page() -> None:
     st.subheader("历史报告总览")
     st.dataframe(dataframe[display_columns], width="stretch")
 
-    root_cause_counts = dataframe["root_cause"].fillna("unknown").value_counts()
+    root_cause_counts = dataframe["root_cause_service"].fillna("unknown").value_counts()
     decision_counts = dataframe["decision"].fillna("unknown").value_counts()
     fault_type_counts = dataframe["fault_type"].fillna("unknown").value_counts()
 
     col1, col2 = st.columns(2)
     with col1:
-        st.caption("根因候选频次")
+        st.caption("根因服务频次")
         st.bar_chart(root_cause_counts)
     with col2:
         st.caption("故障类型频次")
@@ -169,7 +176,7 @@ def _parse_header_value(value: str) -> Any:
 def _extract_services(content: str, header: dict[str, Any]) -> list[str]:
     affected_services = header.get("affected_services")
     if isinstance(affected_services, list):
-        return sorted(str(item) for item in affected_services if item)
+        return normalize_service_list(affected_services)
 
     services: set[str] = set()
     for line in content.splitlines():
@@ -181,7 +188,7 @@ def _extract_services(content: str, header: dict[str, Any]) -> list[str]:
             continue
         if parts[0] in {"服务", "Service", "---", "-"} or not parts[0]:
             continue
-        services.add(parts[0])
+        services.update(normalize_service_list([parts[0]]))
     return sorted(services)
 
 
@@ -226,9 +233,9 @@ def _build_recent_summary(row: pd.Series) -> str:
     services = row.get("services") or []
     services_text = ", ".join(services[:4]) if services else "-"
     return (
-        f"根因候选：{row.get('root_cause') or '-'}；"
+        f"根因服务：{row.get('root_cause_service') or row.get('root_cause') or '-'}；"
+        f"故障模式：{row.get('fault_type') or '-'}；"
         f"决策：{row.get('decision') or '-'}；"
         f"置信度：{row.get('confidence') or '-'}；"
-        f"故障类型：{row.get('fault_type') or '-'}；"
         f"涉及服务：{services_text}"
     )
